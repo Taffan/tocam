@@ -155,24 +155,6 @@
 
     document.getElementById('ke-cam-capture').addEventListener('click', captureKEPhoto);
     document.getElementById('ke-cam-close').addEventListener('click', closeKECamera);
-    document.getElementById('btn-ke-add-manual').addEventListener('click', () => {
-      const input = document.getElementById('ke-manual-input');
-      const code = input.value.trim();
-      if (code) {
-        addKECode(code);
-        input.value = '';
-        input.focus();
-      }
-    });
-    document.getElementById('ke-manual-input').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        const code = e.target.value.trim();
-        if (code) {
-          addKECode(code);
-          e.target.value = '';
-        }
-      }
-    });
 
     document.getElementById('btn-download').addEventListener('click', () => {
       if (currentReport.status !== 'completed') {
