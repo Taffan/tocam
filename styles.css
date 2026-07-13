@@ -455,6 +455,29 @@ body {
   margin-bottom: 20px;
 }
 
+.complete-loading {
+  margin: 16px 0;
+  display: none;
+}
+
+.complete-loading.show {
+  display: block;
+}
+
+.complete-actions.hidden {
+  display: none;
+}
+
+.progress-animate {
+  width: 100%;
+  animation: progressPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes progressPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
 /* Checklist */
 .sections-checklist {
   display: flex;

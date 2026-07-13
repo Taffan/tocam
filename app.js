@@ -19,6 +19,8 @@
   let deferredPrompt = null;
   let pageHistory = ['home'];
   let currentPage = 'home';
+  let cachedBlob = null;
+  let cachedFilename = '';
 
   function init() {
     initDB().then(() => {
@@ -101,7 +103,7 @@
 
   function setupEventListeners() {
     document.getElementById('header-back').addEventListener('click', goBack);
-    document.getElementById('btn-new-report').addEventListener('click', () => showPage('config'));
+    document.getElementById('btn-new-report').addEventListener('click', () => { cachedBlob = null; showPage('config'); });
 
     document.querySelectorAll('.type-btn').forEach(btn => {
       btn.addEventListener('click', () => selectType(btn.dataset.type));
@@ -177,6 +179,7 @@
     });
     document.getElementById('btn-new-from-complete').addEventListener('click', () => {
       currentReport = null;
+      cachedBlob = null;
       showPage('home');
     });
   }
@@ -898,6 +901,19 @@
 
   function showComplete() {
     showPage('complete');
+    const loadingEl = document.getElementById('complete-loading');
+    const actionsEl = document.querySelector('.complete-actions');
+    loadingEl.classList.add('show');
+    actionsEl.classList.add('hidden');
+    buildZipBlob().then(blob => {
+      cachedBlob = blob;
+      cachedFilename = `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
+      loadingEl.classList.remove('show');
+      actionsEl.classList.remove('hidden');
+    }).catch(() => {
+      loadingEl.classList.remove('show');
+      actionsEl.classList.remove('hidden');
+    });
     let totalPhotos = 0;
     let doneTypes = 0;
     let totalTypes = 0;
@@ -995,8 +1011,8 @@
   async function downloadArchive() {
     showToast('Создание архива...');
     try {
-      const blob = await buildZipBlob();
-      const filename = `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
+      const blob = cachedBlob || await buildZipBlob();
+      const filename = cachedFilename || `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
       downloadBlob(blob, filename);
       showToast('Архив скачан');
     } catch (e) {
@@ -1062,8 +1078,8 @@
   async function doShareOrDownload() {
     showToast('Создание архива...');
     try {
-      const blob = await buildZipBlob();
-      const filename = `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
+      const blob = cachedBlob || await buildZipBlob();
+      const filename = cachedFilename || `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
       const file = new File([blob], filename, { type: 'application/zip' });
 
       if (navigator.share) {
