@@ -1086,37 +1086,32 @@
     doShareOrDownload();
   }
 
-  async function doShareOrDownload() {
-    showToast('Создание архива...');
-    try {
-      const blob = cachedBlob || await buildZipBlob();
-      const filename = cachedFilename || `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
-      const file = new File([blob], filename, { type: 'application/zip' });
-
-      if (navigator.share) {
-        const shareData = {
-          title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
-          text: `${currentReport.reportName} | ${currentReport.technician}`
-        };
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          shareData.files = [file];
-        }
-        try {
-          await navigator.share(shareData);
-          return;
-        } catch(e) {
-          if (e.name !== 'AbortError') {
-            downloadBlob(blob, filename);
-            showToast('Архив скачан — отправьте вручную');
-          }
-        }
-      } else {
-        downloadBlob(blob, filename);
-        showToast('Архив скачан');
-      }
-    } catch (e) {
-      showToast('Ошибка: ' + e.message);
+  function tryShare(blob, filename) {
+    const file = new File([blob], filename, { type: 'application/zip' });
+    const shareData = {
+      title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
+      text: `${currentReport.reportName} | ${currentReport.technician}`
+    };
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      shareData.files = [file];
     }
+    navigator.share(shareData).catch(e => {
+      if (e.name !== 'AbortError') {
+        showToast('Приложение не поддерживает файл — сохраните и отправьте вручную');
+      }
+    });
+  }
+
+  async function doShareOrDownload() {
+    if (!cachedBlob) {
+      showToast('Дождитесь подготовки архива');
+      return;
+    }
+    if (!navigator.share) {
+      showToast('Отправка недоступна в этом браузере');
+      return;
+    }
+    tryShare(cachedBlob, cachedFilename);
   }
 
   async function buildZipBlob() {
