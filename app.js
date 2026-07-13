@@ -1092,28 +1092,15 @@
       const blob = cachedBlob || await buildZipBlob();
       const filename = cachedFilename || `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
 
-      if (!navigator.share) {
-        showToast('Отправка недоступна');
-        return;
+      if (navigator.share) {
+        navigator.share({
+          title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
+          text: `${currentReport.reportName} | ${currentReport.technician}\n\nФайл отчёта: ${filename}`
+        }).catch(() => {});
+      } else {
+        downloadBlob(blob, filename);
+        showToast('Архив скачан');
       }
-
-      const file = new File([blob], filename, { type: 'application/zip' });
-      const shareData = {
-        title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
-        text: `${currentReport.reportName} | ${currentReport.technician}`
-      };
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        shareData.files = [file];
-      }
-
-      navigator.share(shareData).catch(e => {
-        if (e.name !== 'AbortError') {
-          navigator.share({
-            title: shareData.title,
-            text: shareData.text
-          }).catch(() => {});
-        }
-      });
     } catch (e) {
       showToast('Ошибка: ' + e.message);
     }
