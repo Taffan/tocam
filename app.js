@@ -3,7 +3,13 @@
 
   if (navigator.serviceWorker) {
     navigator.serviceWorker.getRegistrations().then(regs => {
+      const hadRegs = regs.length > 0;
       regs.forEach(reg => reg.unregister());
+      if (hadRegs && !sessionStorage.getItem('sw_killed')) {
+        sessionStorage.setItem('sw_killed', '1');
+        window.location.reload();
+        return;
+      }
     });
   }
   if (window.caches) {

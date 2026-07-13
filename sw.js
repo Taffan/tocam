@@ -1,11 +1,11 @@
-const CACHE_NAME = 'foto-reports-v6';
+const CACHE_NAME = 'foto-reports-v7';
 
 const PRECACHE = [
   './',
   './index.html',
-  './styles.css?v=3',
-  './app.js?v=3',
-  './data.js?v=3',
+  './styles.css?v=7',
+  './app.js?v=7',
+  './data.js?v=7',
   './manifest.json'
 ];
 
