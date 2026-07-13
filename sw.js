@@ -1,23 +1,18 @@
-const CACHE_NAME = 'foto-reports-v1';
+const CACHE_NAME = 'foto-reports-v2';
 
-const STATIC_ASSETS = [
+const PRECACHE = [
   './',
   './index.html',
+  './styles.css',
+  './app.js',
+  './data.js',
   './manifest.json'
-];
-
-const CDN_ASSETS = [
-  'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
-  'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
-  'https://unpkg.com/@aspect-build/aspect-build.github.io@0.0.1-badges/aspect-badges.js'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.log('SW install failed, will retry on fetch');
-      });
+      return cache.addAll(PRECACHE).catch(() => {});
     })
   );
   self.skipWaiting();
@@ -49,7 +44,7 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         })
-        .catch(() => cached);
+        .catch(() => null);
 
       return cached || fetchPromise;
     })
