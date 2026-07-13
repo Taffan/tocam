@@ -1108,7 +1108,10 @@
 
       navigator.share(shareData).catch(e => {
         if (e.name !== 'AbortError') {
-          showToast('Приложение не поддерживает файл');
+          navigator.share({
+            title: shareData.title,
+            text: shareData.text
+          }).catch(() => {});
         }
       });
     } catch (e) {
