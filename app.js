@@ -145,15 +145,35 @@
       showPhotoSection();
     });
 
-    document.getElementById('btn-download').addEventListener('click', () => {
+    document.getElementById('btn-download').addEventListener('click', async () => {
       if (currentReport.status !== 'completed') {
         showToast('Сначала завершите отчёт');
         return;
       }
-      downloadArchive();
+      showToast('Создание архива...');
+      try {
+        const blob = await buildZipBlob();
+        const filename = `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
+        downloadBlob(blob, filename);
+        showToast('Архив скачан');
+      } catch (e) {
+        showToast('Ошибка: ' + e.message);
+      }
     });
-    document.getElementById('btn-email').addEventListener('click', sendEmail);
-    document.getElementById('btn-share').addEventListener('click', shareReport);
+    document.getElementById('btn-email').addEventListener('click', () => {
+      if (currentReport.status !== 'completed') {
+        showToast('Сначала завершите отчёт');
+        return;
+      }
+      sendEmail();
+    });
+    document.getElementById('btn-share').addEventListener('click', () => {
+      if (currentReport.status !== 'completed') {
+        showToast('Сначала завершите отчёт');
+        return;
+      }
+      shareReport();
+    });
     document.getElementById('btn-new-from-complete').addEventListener('click', () => {
       currentReport = null;
       showPage('home');
@@ -935,49 +955,41 @@
   }
 
   function sendEmail() {
-    downloadArchive();
-    showToast('Скачайте архив, затем отправьте через приложение');
+    shareWithApp('email');
   }
 
-  async function shareReport() {
-    showToast('Подготовка...');
+  async function shareWithApp(appType) {
+    showToast('Подготовка архива...');
     try {
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      
-      if (navigator.canShare && navigator.canShare({ files: [] })) {
-        const blob = await prepareShareBlob();
-        const file = new File([blob], `${currentReport.reportName}.zip`, { type: 'application/zip' });
-        
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            title: `Фотоотчёт: ${currentReport.reportName}`,
-            text: `Отчёт: ${currentReport.reportName}\nТехник: ${currentReport.technician}\nДата: ${formatDate(currentReport.date)}`,
-            files: [file]
-          });
-          return;
-        }
-      }
-      
-      if (navigator.share) {
+      const zipBlob = await buildZipBlob();
+      const filename = `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
+      const file = new File([zipBlob], filename, { type: 'application/zip' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
-          title: `Фотоотчёт: ${currentReport.reportName}`,
-          text: `Отчёт: ${currentReport.reportName}\nТехник: ${currentReport.technician}\nДата: ${formatDate(currentReport.date)}`
+          title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
+          text: `Отчёт: ${currentReport.reportName}\nТехник: ${currentReport.technician}\nДата: ${formatDate(currentReport.date)}`,
+          files: [file]
         });
         return;
       }
-      
-      downloadArchive();
+
+      downloadBlob(zipBlob, filename);
+      showToast('Архив готов — отправьте вручную');
     } catch (e) {
       if (e.name !== 'AbortError') {
-        downloadArchive();
+        showToast('Ошибка: ' + e.message);
       }
     }
   }
-  
-  async function prepareShareBlob() {
+
+  function shareReport() {
+    shareWithApp('share');
+  }
+
+  async function buildZipBlob() {
     const zip = new JSZip();
-    zip.file('report.json', JSON.stringify(generateReportJSON(), null, 2));
-    
+
     const ws_data = generateXlsxData();
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     ws['!cols'] = [{ wch: 10 }, { wch: 35 }, { wch: 55 }, { wch: 12 }, { wch: 25 }];
@@ -985,22 +997,43 @@
     XLSX.utils.book_append_sheet(wb, ws, 'Отчет по ТО');
     const xlsx_buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     zip.file(getXlsxFilename(), xlsx_buf);
-    
+
+    zip.file('report.json', JSON.stringify(generateReportJSON(), null, 2));
+
+    let itemNum = 0;
     for (const sec of currentReport.sections) {
       for (const photo of sec.photos) {
         const pt = sec.photoTypes.find(t => t.id === photo.typeId);
         if (!pt) continue;
-        
+        itemNum++;
         const base64 = photo.dataUrl.split(',')[1];
         let filename = pt.filename;
         if (pt.multi && photo.photoNumber > 1) {
           filename = filename.replace('.jpg', ` ${photo.photoNumber}.jpg`);
         }
-        
-        zip.file(filename, base64, { base64: true });
+        if (pt.isKE) {
+          zip.file(`КЕ/${filename}`, base64, { base64: true });
+        } else {
+          zip.file(`${itemNum}# ${filename}`, base64, { base64: true });
+        }
       }
     }
-    
+
+    const keCodes = currentReport.sections.reduce((acc, sec) => {
+      const kePhotos = sec.photos.filter(p => {
+        const pt = sec.photoTypes.find(t => t.id === p.typeId);
+        return pt && pt.isKE;
+      });
+      return acc + kePhotos.length;
+    }, 0);
+
+    const lines = [`Фото Отчёт — ${currentReport.reportName}`, `Дата: ${currentReport.date}`, `Техник: ${currentReport.technician}`, '', `Всего фото: ${currentReport.sections.reduce((s, sec) => s + sec.photos.length, 0)}`, `КЕ фото: ${keCodes}`, `КЕ кодов: ${currentReport.keCodes ? currentReport.keCodes.length : 0}`, ''];
+    if (currentReport.keCodes && currentReport.keCodes.length > 0) {
+      lines.push('КЕ коды:');
+      currentReport.keCodes.forEach(code => lines.push(`  ${code}`));
+    }
+    zip.file('КЕ.txt', lines.join('\n'));
+
     return await zip.generateAsync({ type: 'blob' });
   }
 
