@@ -1585,3 +1585,31 @@ body {
   flex-direction: column;
   gap: 8px;
 }
+
+.form-label {
+  font-size: 13px;
+  color: #86868B;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.ke-count {
+  font-size: 14px;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.ke-list h3 {
+  font-size: 15px;
+  font-weight: 600;
+  padding: 0 0 12px 0;
+  margin: 0;
+}
+
+.ke-item-code {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: ui-monospace, monospace;
+  word-break: break-all;
+}

@@ -14,6 +14,8 @@
   let videoStream = null;
   let lastScannedCode = null;
   let autoSaveTimer = null;
+  let scanCooldown = false;
+  let scanTimer = null;
   let deferredPrompt = null;
   let pageHistory = ['home'];
   let currentPage = 'home';
@@ -142,23 +144,33 @@
     document.getElementById('ke-gallery-input').addEventListener('change', handleKEGallery);
     document.getElementById('btn-save-ke').addEventListener('click', () => {
       stopScanner();
-      showPhotoSection();
+      showChecklist();
+    });
+    document.getElementById('btn-ke-add-manual').addEventListener('click', () => {
+      const input = document.getElementById('ke-manual-input');
+      const code = input.value.trim();
+      if (code) {
+        addKECode(code);
+        input.value = '';
+        input.focus();
+      }
+    });
+    document.getElementById('ke-manual-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const code = e.target.value.trim();
+        if (code) {
+          addKECode(code);
+          e.target.value = '';
+        }
+      }
     });
 
-    document.getElementById('btn-download').addEventListener('click', async () => {
+    document.getElementById('btn-download').addEventListener('click', () => {
       if (currentReport.status !== 'completed') {
         showToast('Сначала завершите отчёт');
         return;
       }
-      showToast('Создание архива...');
-      try {
-        const blob = await buildZipBlob();
-        const filename = `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
-        downloadBlob(blob, filename);
-        showToast('Архив скачан');
-      } catch (e) {
-        showToast('Ошибка: ' + e.message);
-      }
+      downloadArchive();
     });
     document.getElementById('btn-email').addEventListener('click', () => {
       if (currentReport.status !== 'completed') {
@@ -390,7 +402,8 @@
       date: document.getElementById('input-date').value,
       technician: document.getElementById('input-technician').value,
       comment: document.getElementById('input-comment').value,
-      sections: sections
+      sections: sections,
+      keCodes: []
     };
 
     saveReport();
@@ -663,34 +676,159 @@
     const section = currentReport.sections[currentSectionIndex];
 
     try {
-      codeReader = new ZXing.BrowserMultiFormatReader();
+      stopScanner();
       const video = document.getElementById('ke-video');
       const frame = document.getElementById('ke-frame');
       const codeText = document.getElementById('ke-code-text');
       const detectedBox = document.getElementById('ke-detected-code');
+      const scanLine = document.getElementById('ke-scan-line');
 
       videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       video.srcObject = videoStream;
       lastScannedCode = null;
+      scanCooldown = false;
 
-      codeReader.decodeFromVideoDevice(null, video, (result) => {
-        if (result && result.text !== lastScannedCode) {
-          lastScannedCode = result.text;
-          frame.classList.add('detected');
-          detectedBox.classList.add('detected');
-          codeText.textContent = result.text;
-        } if (!result) {
-          frame.classList.remove('detected');
-          detectedBox.classList.remove('detected');
-          codeText.textContent = 'Наведите на штрих-код';
-        }
-      });
+      if ('BarcodeDetector' in window) {
+        const det = new BarcodeDetector({
+          formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417']
+        });
+        scanTimer = setInterval(async () => {
+          if (scanCooldown || video.readyState < 2) return;
+          try {
+            const codes = await det.detect(video);
+            if (codes.length) onScanDetected(codes[0].rawValue);
+          } catch(e) {}
+        }, 300);
+      } else if (typeof ZXing !== 'undefined') {
+        const hints = new Map();
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+          ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+          ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+          ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.UPC_A,
+          ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.ITF
+        ]);
+        codeReader = new ZXing.MultiFormatReader();
+        codeReader.setHints(hints);
+
+        const cv = document.createElement('canvas');
+        cv.style.display = 'none';
+        cv.id = 'zxing-cv';
+        document.body.appendChild(cv);
+        const ctx = cv.getContext('2d');
+
+        scanTimer = setInterval(() => {
+          if (scanCooldown || video.readyState < 2) return;
+          try {
+            cv.width = video.videoWidth;
+            cv.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            const imgData = ctx.getImageData(0, 0, cv.width, cv.height);
+            const lum = new ZXing.RGBLuminanceSource(imgData.data, cv.width, cv.height);
+            const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+            const result = codeReader.decode(bmp);
+            if (result) onScanDetected(result.getText());
+          } catch(e) {}
+        }, 400);
+      } else {
+        showToast('Сканер не поддерживается — используйте ручной ввод');
+      }
 
       renderKESectionList(section);
+      renderKEList();
     } catch (err) {
-      showToast('Камера недоступна');
-      showPhotoSection();
+      if (err.name === 'NotAllowedError') {
+        showToast('Разрешите доступ к камере в браузере');
+      } else {
+        showToast('Камера недоступна: ' + err.message);
+      }
     }
+  }
+
+  function onScanDetected(code) {
+    if (scanCooldown) return;
+    const clean = code.replace(/[^0-9]/g, '');
+    if (clean.length !== 13 && clean.length !== 4) {
+      return;
+    }
+    if (lastScannedCode === code) return;
+    lastScannedCode = code;
+
+    scanCooldown = true;
+    setTimeout(() => { scanCooldown = false; lastScannedCode = null; }, 2000);
+
+    if (navigator.vibrate) navigator.vibrate(60);
+    beepFeedback();
+
+    const frame = document.getElementById('ke-frame');
+    const detectedBox = document.getElementById('ke-detected-code');
+    const codeText = document.getElementById('ke-code-text');
+
+    if (frame) frame.classList.add('detected');
+    if (detectedBox) detectedBox.classList.add('detected');
+    if (codeText) codeText.textContent = code;
+
+    showToast('✓ ' + code);
+    addKECode(code);
+  }
+
+  function beepFeedback() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(1800, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.12);
+      osc.onended = () => ctx.close();
+    } catch(e) {}
+  }
+
+  function addKECode(code) {
+    if (!currentReport) return;
+    if (!currentReport.keCodes) currentReport.keCodes = [];
+    if (currentReport.keCodes.includes(code)) return;
+    currentReport.keCodes.push(code);
+    saveReport();
+    renderKEList();
+  }
+
+  function renderKEList() {
+    const container = document.getElementById('ke-items');
+    const countSpan = document.getElementById('ke-count');
+    if (!currentReport || !currentReport.keCodes || !currentReport.keCodes.length) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-text">Нет кодов КЕ</div></div>';
+      if (countSpan) countSpan.textContent = '';
+      return;
+    }
+    if (countSpan) countSpan.textContent = `(${currentReport.keCodes.length})`;
+    container.innerHTML = currentReport.keCodes.map((code, i) => `
+      <div class="ke-item" data-idx="${i}">
+        <div class="ke-item-code">${escapeHtml(code)}</div>
+        <button class="ke-item-delete"></button>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('.ke-item-delete').forEach(btn => {
+      btn.onclick = (e) => {
+        const idx = parseInt(e.target.closest('.ke-item').dataset.idx);
+        currentReport.keCodes.splice(idx, 1);
+        saveReport();
+        renderKEList();
+      };
+    });
+  }
+
+  function removeKECode(index) {
+    if (!currentReport || !currentReport.keCodes) return;
+    currentReport.keCodes.splice(index, 1);
+    saveReport();
+    renderKEList();
   }
 
   function renderKESectionList(section) {
@@ -756,8 +894,11 @@
   }
 
   function stopScanner() {
+    if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
     if (codeReader) { codeReader.reset(); codeReader = null; }
     if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
+    const cv = document.getElementById('zxing-cv');
+    if (cv) cv.remove();
   }
 
   function finishReport() {
@@ -865,48 +1006,14 @@
 
   async function downloadArchive() {
     showToast('Создание архива...');
-    const zip = new JSZip();
-
-    zip.file('report.json', JSON.stringify(generateReportJSON(), null, 2));
-
-    const ws_data = generateXlsxData();
-    const ws = XLSX.utils.aoa_to_sheet(ws_data);
-    ws['!cols'] = [{ wch: 10 }, { wch: 35 }, { wch: 55 }, { wch: 12 }, { wch: 25 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Отчет по ТО');
-    const xlsx_buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    zip.file(getXlsxFilename(), xlsx_buf);
-
-    zip.file('report.json', JSON.stringify(generateReportJSON(), null, 2));
-
-    const keFolder = zip.folder('КЕ');
-    const keTxtLines = ['Штрих-код | Файл', '-'.repeat(40)];
-
-    for (const sec of currentReport.sections) {
-      for (const photo of sec.photos) {
-        const pt = sec.photoTypes.find(t => t.id === photo.typeId);
-        if (!pt) continue;
-
-        const base64 = photo.dataUrl.split(',')[1];
-        let filename = pt.filename;
-        if (pt.multi && photo.photoNumber > 1) {
-          filename = filename.replace('.jpg', ` ${photo.photoNumber}.jpg`);
-        }
-
-        if (pt.isKE) {
-          keFolder.file(filename, base64, { base64: true });
-          keTxtLines.push(`${pt.name} | ${filename}`);
-        } else {
-          zip.file(filename, base64, { base64: true });
-        }
-      }
+    try {
+      const blob = await buildZipBlob();
+      const filename = `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
+      downloadBlob(blob, filename);
+      showToast('Архив скачан');
+    } catch (e) {
+      showToast('Ошибка: ' + e.message);
     }
-
-    zip.file('КЕ.txt', keTxtLines.join('\n'));
-
-    downloadBlob(await zip.generateAsync({ type: 'blob' }),
-      `${currentReport.date}_${currentReport.reportName.replace(/[^a-zA-Zа-яА-Я0-9ёЁ]/g, '_')}.zip`);
-    showToast('Архив готов');
   }
 
   function generateReportJSON() {
@@ -955,36 +1062,53 @@
   }
 
   function sendEmail() {
-    shareWithApp('email');
+    showShareModal('email');
   }
 
-  async function shareWithApp(appType) {
-    showToast('Подготовка архива...');
-    try {
-      const zipBlob = await buildZipBlob();
+  function shareReport() {
+    showShareModal('share');
+  }
+
+  function showShareModal(type) {
+    showToast('Создание архива...');
+    buildZipBlob().then(blob => {
       const filename = `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
-      const file = new File([zipBlob], filename, { type: 'application/zip' });
+      const file = new File([blob], filename, { type: 'application/zip' });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
+        navigator.share({
           title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
-          text: `Отчёт: ${currentReport.reportName}\nТехник: ${currentReport.technician}\nДата: ${formatDate(currentReport.date)}`,
+          text: `Отчёт: ${currentReport.reportName} | ${currentReport.technician} | ${formatDate(currentReport.date)}`,
           files: [file]
+        }).catch(e => {
+          if (e.name !== 'AbortError') downloadBlob(blob, filename);
         });
         return;
       }
 
-      downloadBlob(zipBlob, filename);
-      showToast('Архив готов — отправьте вручную');
-    } catch (e) {
-      if (e.name !== 'AbortError') {
-        showToast('Ошибка: ' + e.message);
-      }
-    }
-  }
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
 
-  function shareReport() {
-    shareWithApp('share');
+      if (isAndroid) {
+        const url = URL.createObjectURL(blob);
+        const androidMsg = encodeURIComponent(`Фотоотчёт: ${currentReport.reportName}\nТехник: ${currentReport.technician}\nДата: ${formatDate(currentReport.date)}`);
+
+        const choices = [
+          { name: 'WhatsApp', url: `whatsapp://send?text=${androidMsg}`, fallback: `https://wa.me/?text=${androidMsg}` },
+          { name: 'Telegram', url: `tg://msg_url?text=${androidMsg}`, fallback: `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${androidMsg}` },
+          { name: 'VK', url: `vk://vk.com/write?message=${androidMsg}`, fallback: `https://vk.com/dev/messages.send` }
+        ];
+
+        const msg = 'Архив скачан. Отправьте его через:\nWhatsApp, Telegram, VK или Email';
+        downloadBlob(blob, filename);
+        showToast(msg);
+      } else {
+        downloadBlob(blob, filename);
+        showToast('Файл скачан. Отправьте через iOS Share или Email');
+      }
+    }).catch(e => {
+      showToast('Ошибка: ' + e.message);
+    });
   }
 
   async function buildZipBlob() {
