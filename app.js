@@ -138,10 +138,6 @@
     document.getElementById('camera-input').addEventListener('change', handleCameraCapture);
     document.getElementById('gallery-input').addEventListener('change', handleGallerySelect);
 
-    document.getElementById('btn-ke-gallery').addEventListener('click', () => {
-      document.getElementById('ke-gallery-input').click();
-    });
-    document.getElementById('ke-gallery-input').addEventListener('change', handleKEGallery);
     document.getElementById('btn-save-ke').addEventListener('click', () => {
       stopScanner();
       showChecklist();
@@ -171,13 +167,6 @@
         return;
       }
       downloadArchive();
-    });
-    document.getElementById('btn-email').addEventListener('click', () => {
-      if (currentReport.status !== 'completed') {
-        showToast('Сначала завершите отчёт');
-        return;
-      }
-      sendEmail();
     });
     document.getElementById('btn-share').addEventListener('click', () => {
       if (currentReport.status !== 'completed') {
@@ -733,7 +722,6 @@
         showToast('Сканер не поддерживается — используйте ручной ввод');
       }
 
-      renderKESectionList(section);
       renderKEList();
     } catch (err) {
       if (err.name === 'NotAllowedError') {
