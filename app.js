@@ -1066,13 +1066,16 @@
       const filename = `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
       const file = new File([blob], filename, { type: 'application/zip' });
 
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (navigator.share) {
+        const shareData = {
+          title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
+          text: `${currentReport.reportName} | ${currentReport.technician}`
+        };
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          shareData.files = [file];
+        }
         try {
-          await navigator.share({
-            title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
-            text: `${currentReport.reportName} | ${currentReport.technician}`,
-            files: [file]
-          });
+          await navigator.share(shareData);
           return;
         } catch(e) {
           if (e.name !== 'AbortError') {
