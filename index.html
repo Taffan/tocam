@@ -186,28 +186,6 @@
       </button>
     </section>
 
-    <!-- KE Camera Modal -->
-    <div id="ke-camera-modal" class="ke-cam-modal hidden">
-      <div class="ke-cam-video-wrap">
-        <video id="ke-cam-video" autoplay playsinline muted></video>
-        <div class="ke-cam-frame" id="ke-cam-frame">
-          <div class="ke-cam-corner tl"></div>
-          <div class="ke-cam-corner tr"></div>
-          <div class="ke-cam-corner bl"></div>
-          <div class="ke-cam-corner br"></div>
-          <div class="ke-cam-scan-line"></div>
-        </div>
-        <div class="ke-cam-status" id="ke-cam-status">Наведите на штрих-код</div>
-      </div>
-      <div class="ke-cam-actions">
-        <button class="btn btn-primary" id="ke-cam-capture">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
-          Сделать фото
-        </button>
-        <button class="btn btn-secondary" id="ke-cam-close">Отмена</button>
-      </div>
-    </div>
-
     <!-- COMPLETE PAGE -->
     <section id="page-complete" class="page hidden">
       <div class="complete-header">
@@ -275,6 +253,28 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <!-- KE Camera Modal -->
+  <div id="ke-camera-modal" class="ke-cam-modal hidden">
+    <div class="ke-cam-video-wrap">
+      <video id="ke-cam-video" autoplay playsinline muted></video>
+      <div class="ke-cam-frame" id="ke-cam-frame">
+        <div class="ke-cam-corner tl"></div>
+        <div class="ke-cam-corner tr"></div>
+        <div class="ke-cam-corner bl"></div>
+        <div class="ke-cam-corner br"></div>
+        <div class="ke-cam-scan-line"></div>
+      </div>
+      <div class="ke-cam-status" id="ke-cam-status">Наведите на штрих-код</div>
+    </div>
+    <div class="ke-cam-actions">
+      <button class="btn btn-primary" id="ke-cam-capture">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+        Сделать фото
+      </button>
+      <button class="btn btn-secondary" id="ke-cam-close">Отмена</button>
+    </div>
+  </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
