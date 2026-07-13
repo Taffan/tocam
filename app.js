@@ -1062,53 +1062,46 @@
   }
 
   function sendEmail() {
-    showShareModal('email');
+    doShareOrDownload();
   }
 
   function shareReport() {
-    showShareModal('share');
+    doShareOrDownload();
   }
 
-  function showShareModal(type) {
+  async function doShareOrDownload() {
     showToast('Создание архива...');
-    buildZipBlob().then(blob => {
+    try {
+      const blob = await buildZipBlob();
       const filename = `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
       const file = new File([blob], filename, { type: 'application/zip' });
 
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({
+      if (navigator.share) {
+        const shareData = {
           title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
-          text: `Отчёт: ${currentReport.reportName} | ${currentReport.technician} | ${formatDate(currentReport.date)}`,
-          files: [file]
-        }).catch(e => {
-          if (e.name !== 'AbortError') downloadBlob(blob, filename);
-        });
-        return;
-      }
+          text: `${currentReport.reportName} | ${currentReport.technician}`
+        };
 
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      const isAndroid = /Android/.test(navigator.userAgent);
+        if ('files' in navigator.share && blob.size < 50 * 1024 * 1024) {
+          shareData.files = [file];
+        }
 
-      if (isAndroid) {
-        const url = URL.createObjectURL(blob);
-        const androidMsg = encodeURIComponent(`Фотоотчёт: ${currentReport.reportName}\nТехник: ${currentReport.technician}\nДата: ${formatDate(currentReport.date)}`);
-
-        const choices = [
-          { name: 'WhatsApp', url: `whatsapp://send?text=${androidMsg}`, fallback: `https://wa.me/?text=${androidMsg}` },
-          { name: 'Telegram', url: `tg://msg_url?text=${androidMsg}`, fallback: `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${androidMsg}` },
-          { name: 'VK', url: `vk://vk.com/write?message=${androidMsg}`, fallback: `https://vk.com/dev/messages.send` }
-        ];
-
-        const msg = 'Архив скачан. Отправьте его через:\nWhatsApp, Telegram, VK или Email';
-        downloadBlob(blob, filename);
-        showToast(msg);
+        try {
+          await navigator.share(shareData);
+          return;
+        } catch(e) {
+          if (e.name !== 'AbortError') {
+            downloadBlob(blob, filename);
+            showToast('Архив скачан — отправьте вручную');
+          }
+        }
       } else {
         downloadBlob(blob, filename);
-        showToast('Файл скачан. Отправьте через iOS Share или Email');
+        showToast('Архив скачан');
       }
-    }).catch(e => {
+    } catch (e) {
       showToast('Ошибка: ' + e.message);
-    });
+    }
   }
 
   async function buildZipBlob() {
@@ -1125,11 +1118,13 @@
     zip.file('report.json', JSON.stringify(generateReportJSON(), null, 2));
 
     let itemNum = 0;
+    let photoCount = 0;
     for (const sec of currentReport.sections) {
       for (const photo of sec.photos) {
         const pt = sec.photoTypes.find(t => t.id === photo.typeId);
         if (!pt) continue;
         itemNum++;
+        photoCount++;
         const base64 = photo.dataUrl.split(',')[1];
         let filename = pt.filename;
         if (pt.multi && photo.photoNumber > 1) {
@@ -1151,7 +1146,7 @@
       return acc + kePhotos.length;
     }, 0);
 
-    const lines = [`Фото Отчёт — ${currentReport.reportName}`, `Дата: ${currentReport.date}`, `Техник: ${currentReport.technician}`, '', `Всего фото: ${currentReport.sections.reduce((s, sec) => s + sec.photos.length, 0)}`, `КЕ фото: ${keCodes}`, `КЕ кодов: ${currentReport.keCodes ? currentReport.keCodes.length : 0}`, ''];
+    const lines = [`Фото Отчёт — ${currentReport.reportName}`, `Дата: ${currentReport.date}`, `Техник: ${currentReport.technician}`, '', `Всего фото: ${photoCount}`, `КЕ фото: ${keCodes}`, `КЕ кодов: ${currentReport.keCodes ? currentReport.keCodes.length : 0}`, ''];
     if (currentReport.keCodes && currentReport.keCodes.length > 0) {
       lines.push('КЕ коды:');
       currentReport.keCodes.forEach(code => lines.push(`  ${code}`));
