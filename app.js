@@ -1064,7 +1064,8 @@
       const filename = `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
       const file = new File([blob], filename, { type: 'application/zip' });
 
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
             title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
@@ -1080,7 +1081,7 @@
         }
       } else {
         downloadBlob(blob, filename);
-        showToast('Архив скачан');
+        showToast('Архив скачан' + (isIOS ? '' : ' — отправьте вручную через приложение Файлы'));
       }
     } catch (e) {
       showToast('Ошибка: ' + e.message);
