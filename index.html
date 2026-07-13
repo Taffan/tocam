@@ -186,52 +186,27 @@
       </button>
     </section>
 
-    <!-- КЕ SCANNER PAGE -->
-    <section id="page-ke" class="page hidden">
-      <button class="back-btn" id="back-from-ke">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
-        К чек-листу
-      </button>
-      
-      <div class="section-header-page">
-        <h1 class="page-title">Сканирование КЕ</h1>
-        <div class="section-subtitle">Наведите камеру на штрих-код</div>
-      </div>
-      
-      <div class="ke-scanner-container">
-        <video id="ke-video" autoplay playsinline></video>
-        <div class="ke-scanner-frame" id="ke-frame">
-          <div class="ke-corner top-left"></div>
-          <div class="ke-corner top-right"></div>
-          <div class="ke-corner bottom-left"></div>
-          <div class="ke-corner bottom-right"></div>
-          <div class="ke-scan-line" id="ke-scan-line"></div>
+    <!-- KE Camera Modal -->
+    <div id="ke-camera-modal" class="ke-cam-modal hidden">
+      <div class="ke-cam-video-wrap">
+        <video id="ke-cam-video" autoplay playsinline muted></video>
+        <div class="ke-cam-frame" id="ke-cam-frame">
+          <div class="ke-cam-corner tl"></div>
+          <div class="ke-cam-corner tr"></div>
+          <div class="ke-cam-corner bl"></div>
+          <div class="ke-cam-corner br"></div>
+          <div class="ke-cam-scan-line"></div>
         </div>
-        <div class="ke-detected-code" id="ke-detected-code">
-          <svg class="code-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h3v3H7zM14 7h3v3h-3zM7 14h3v3H7zM14 14h3v3h-3z"/></svg>
-          <span class="code-text" id="ke-code-text">Наведите на штрих-код</span>
-        </div>
+        <div class="ke-cam-status" id="ke-cam-status">Наведите на штрих-код</div>
       </div>
-
-      <div class="ke-list">
-        <h3>КЕ коды <span id="ke-count"></span></h3>
-        <div class="ke-items" id="ke-items"></div>
+      <div class="ke-cam-actions">
+        <button class="btn btn-primary" id="ke-cam-capture">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+          Сделать фото
+        </button>
+        <button class="btn btn-secondary" id="ke-cam-close">Отмена</button>
       </div>
-      
-      <div class="card" style="padding:16px;margin:12px 0">
-        <div class="form-group">
-          <label class="form-label">Ввести вручную</label>
-          <div class="flex gap-2">
-            <input type="text" class="form-input" id="ke-manual-input" placeholder="КЕ код">
-            <button class="btn btn-primary" id="btn-ke-add-manual" style="width:80px;padding:12px">+</button>
-          </div>
-        </div>
-      </div>
-      
-      <button class="btn btn-primary btn-block" id="btn-save-ke">
-        Сохранить и продолжить
-      </button>
-    </section>
+    </div>
 
     <!-- COMPLETE PAGE -->
     <section id="page-complete" class="page hidden">

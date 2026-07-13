@@ -143,10 +143,6 @@
       saveReport();
       showChecklist();
     });
-    document.getElementById('back-from-ke').addEventListener('click', () => {
-      stopScanner();
-      showPhotoSection();
-    });
 
     document.getElementById('report-form').addEventListener('submit', handleFormSubmit);
     document.getElementById('btn-finish-report').addEventListener('click', () => {
@@ -157,10 +153,8 @@
     document.getElementById('camera-input').addEventListener('change', handleCameraCapture);
     document.getElementById('gallery-input').addEventListener('change', handleGallerySelect);
 
-    document.getElementById('btn-save-ke').addEventListener('click', () => {
-      stopScanner();
-      showChecklist();
-    });
+    document.getElementById('ke-cam-capture').addEventListener('click', captureKEPhoto);
+    document.getElementById('ke-cam-close').addEventListener('click', closeKECamera);
     document.getElementById('btn-ke-add-manual').addEventListener('click', () => {
       const input = document.getElementById('ke-manual-input');
       const code = input.value.trim();
@@ -562,7 +556,11 @@
         container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
         item.classList.add('selected');
         
-        document.getElementById('camera-input').click();
+        if (pt?.isKE) {
+          openKECamera(typeId);
+        } else {
+          document.getElementById('camera-input').click();
+        }
       });
     });
 
@@ -680,32 +678,43 @@
     showToast('Секция сохранена');
   }
 
-  async function openKEScanner() {
-    showPage('ke');
-    const section = currentReport.sections[currentSectionIndex];
+  let keCamStream = null;
+  let keCamScanTimer = null;
+  let keCamDetectedCode = null;
+  let keCamActiveTypeId = null;
+
+  async function openKECamera(typeId) {
+    keCamActiveTypeId = typeId;
+    keCamDetectedCode = null;
+
+    const modal = document.getElementById('ke-camera-modal');
+    modal.classList.remove('hidden');
+
+    const frame = document.getElementById('ke-cam-frame');
+    frame.classList.remove('detected');
+    frame.classList.add('scanning');
+
+    document.getElementById('ke-cam-status').textContent = 'Наведите на штрих-код';
+
+    const video = document.getElementById('ke-cam-video');
 
     try {
-      stopScanner();
-      const video = document.getElementById('ke-video');
-      const frame = document.getElementById('ke-frame');
-      const codeText = document.getElementById('ke-code-text');
-      const detectedBox = document.getElementById('ke-detected-code');
-      const scanLine = document.getElementById('ke-scan-line');
-
-      videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      video.srcObject = videoStream;
-      lastScannedCode = null;
-      scanCooldown = false;
+      keCamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      video.srcObject = keCamStream;
 
       if ('BarcodeDetector' in window) {
         const det = new BarcodeDetector({
           formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417']
         });
-        scanTimer = setInterval(async () => {
-          if (scanCooldown || video.readyState < 2) return;
+        keCamScanTimer = setInterval(async () => {
+          if (video.readyState < 2) return;
           try {
             const codes = await det.detect(video);
-            if (codes.length) onScanDetected(codes[0].rawValue);
+            if (codes.length) {
+              onKECamDetected(codes[0].rawValue);
+            } else {
+              onKECamLost();
+            }
           } catch(e) {}
         }, 300);
       } else if (typeof ZXing !== 'undefined') {
@@ -716,17 +725,15 @@
           ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.UPC_A,
           ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.ITF
         ]);
-        codeReader = new ZXing.MultiFormatReader();
-        codeReader.setHints(hints);
-
+        const reader = new ZXing.MultiFormatReader();
+        reader.setHints(hints);
         const cv = document.createElement('canvas');
         cv.style.display = 'none';
-        cv.id = 'zxing-cv';
+        cv.id = 'ke-zxing-cv';
         document.body.appendChild(cv);
         const ctx = cv.getContext('2d');
-
-        scanTimer = setInterval(() => {
-          if (scanCooldown || video.readyState < 2) return;
+        keCamScanTimer = setInterval(() => {
+          if (video.readyState < 2) return;
           try {
             cv.width = video.videoWidth;
             cv.height = video.videoHeight;
@@ -734,49 +741,78 @@
             const imgData = ctx.getImageData(0, 0, cv.width, cv.height);
             const lum = new ZXing.RGBLuminanceSource(imgData.data, cv.width, cv.height);
             const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
-            const result = codeReader.decode(bmp);
-            if (result) onScanDetected(result.getText());
-          } catch(e) {}
+            const result = reader.decode(bmp);
+            if (result) {
+              onKECamDetected(result.getText());
+            } else {
+              onKECamLost();
+            }
+          } catch(e) { onKECamLost(); }
         }, 400);
       } else {
-        showToast('Сканер не поддерживается — используйте ручной ввод');
+        showToast('Сканер не поддерживается');
       }
-
-      renderKEList();
     } catch (err) {
-      if (err.name === 'NotAllowedError') {
-        showToast('Разрешите доступ к камере в браузере');
-      } else {
-        showToast('Камера недоступна: ' + err.message);
-      }
+      showToast('Камера недоступна');
+      closeKECamera();
     }
   }
 
-  function onScanDetected(code) {
-    if (scanCooldown) return;
-    const clean = code.replace(/[^0-9]/g, '');
-    if (clean.length !== 13 && clean.length !== 4) {
-      return;
+  function onKECamDetected(code) {
+    keCamDetectedCode = code;
+    const frame = document.getElementById('ke-cam-frame');
+    frame.classList.remove('scanning');
+    frame.classList.add('detected');
+    document.getElementById('ke-cam-status').textContent = '✓ ' + code;
+    if (navigator.vibrate) navigator.vibrate(30);
+  }
+
+  function onKECamLost() {
+    keCamDetectedCode = null;
+    const frame = document.getElementById('ke-cam-frame');
+    frame.classList.remove('detected');
+    frame.classList.add('scanning');
+    document.getElementById('ke-cam-status').textContent = 'Наведите на штрих-код';
+  }
+
+  function captureKEPhoto() {
+    if (!keCamActiveTypeId) return;
+    const video = document.getElementById('ke-cam-video');
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    const section = currentReport.sections[currentSectionIndex];
+    const photoNumber = section.photos.filter(p => p.typeId === keCamActiveTypeId).length + 1;
+    section.photos.push({
+      id: generateId(),
+      typeId: keCamActiveTypeId,
+      photoNumber: photoNumber,
+      dataUrl: dataUrl,
+      timestamp: new Date().toISOString()
+    });
+    if (keCamDetectedCode) {
+      if (!currentReport.keCodes) currentReport.keCodes = [];
+      if (!currentReport.keCodes.includes(keCamDetectedCode)) {
+        currentReport.keCodes.push(keCamDetectedCode);
+      }
     }
-    if (lastScannedCode === code) return;
-    lastScannedCode = code;
+    saveReport();
+    closeKECamera();
+    renderSectionPhotos(section);
+    renderPhotoTypes(section);
+    showToast('Фото КЕ сохранено');
+  }
 
-    scanCooldown = true;
-    setTimeout(() => { scanCooldown = false; lastScannedCode = null; }, 2000);
-
-    if (navigator.vibrate) navigator.vibrate(60);
-    beepFeedback();
-
-    const frame = document.getElementById('ke-frame');
-    const detectedBox = document.getElementById('ke-detected-code');
-    const codeText = document.getElementById('ke-code-text');
-
-    if (frame) frame.classList.add('detected');
-    if (detectedBox) detectedBox.classList.add('detected');
-    if (codeText) codeText.textContent = code;
-
-    showToast('✓ ' + code);
-    addKECode(code);
+  function closeKECamera() {
+    if (keCamScanTimer) { clearInterval(keCamScanTimer); keCamScanTimer = null; }
+    if (keCamStream) { keCamStream.getTracks().forEach(t => t.stop()); keCamStream = null; }
+    const cv = document.getElementById('ke-zxing-cv');
+    if (cv) cv.remove();
+    document.getElementById('ke-camera-modal').classList.add('hidden');
+    keCamDetectedCode = null;
+    keCamActiveTypeId = null;
   }
 
   function beepFeedback() {
