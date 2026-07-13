@@ -935,15 +935,73 @@
   }
 
   function sendEmail() {
-    const subject = encodeURIComponent(`Фотоотчёт: ${currentReport.reportName}`);
-    const body = encodeURIComponent(
-      `Объект: ${currentReport.reportName}\nДата: ${formatDate(currentReport.date)}\nТехник: ${currentReport.technician}\n\nСекций: ${currentReport.sections.length}\nФото: ${currentReport.sections.reduce((s, sec) => s + sec.photos.length, 0)}`
-    );
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    downloadArchive();
+    showToast('Скачайте архив, затем отправьте через приложение');
   }
 
-  function shareReport() {
-    navigator.share ? navigator.share({ title: `Фотоотчёт: ${currentReport.reportName}`, text: `Отчёт от ${currentReport.technician}` }).catch(() => {}) : downloadArchive();
+  async function shareReport() {
+    showToast('Подготовка...');
+    try {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      
+      if (navigator.canShare && navigator.canShare({ files: [] })) {
+        const blob = await prepareShareBlob();
+        const file = new File([blob], `${currentReport.reportName}.zip`, { type: 'application/zip' });
+        
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: `Фотоотчёт: ${currentReport.reportName}`,
+            text: `Отчёт: ${currentReport.reportName}\nТехник: ${currentReport.technician}\nДата: ${formatDate(currentReport.date)}`,
+            files: [file]
+          });
+          return;
+        }
+      }
+      
+      if (navigator.share) {
+        await navigator.share({
+          title: `Фотоотчёт: ${currentReport.reportName}`,
+          text: `Отчёт: ${currentReport.reportName}\nТехник: ${currentReport.technician}\nДата: ${formatDate(currentReport.date)}`
+        });
+        return;
+      }
+      
+      downloadArchive();
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        downloadArchive();
+      }
+    }
+  }
+  
+  async function prepareShareBlob() {
+    const zip = new JSZip();
+    zip.file('report.json', JSON.stringify(generateReportJSON(), null, 2));
+    
+    const ws_data = generateXlsxData();
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    ws['!cols'] = [{ wch: 10 }, { wch: 35 }, { wch: 55 }, { wch: 12 }, { wch: 25 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Отчет по ТО');
+    const xlsx_buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    zip.file(getXlsxFilename(), xlsx_buf);
+    
+    for (const sec of currentReport.sections) {
+      for (const photo of sec.photos) {
+        const pt = sec.photoTypes.find(t => t.id === photo.typeId);
+        if (!pt) continue;
+        
+        const base64 = photo.dataUrl.split(',')[1];
+        let filename = pt.filename;
+        if (pt.multi && photo.photoNumber > 1) {
+          filename = filename.replace('.jpg', ` ${photo.photoNumber}.jpg`);
+        }
+        
+        zip.file(filename, base64, { base64: true });
+      }
+    }
+    
+    return await zip.generateAsync({ type: 'blob' });
   }
 
   function showToast(msg) {

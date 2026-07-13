@@ -1570,3 +1570,18 @@ body {
     flex: 1;
   }
 }
+
+.btn-secondary {
+  background: #e5e5ea;
+  color: #000;
+}
+
+.mt-12 {
+  margin-top: 12px;
+}
+
+.complete-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

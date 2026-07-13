@@ -1,4 +1,4 @@
-const CACHE_NAME = 'foto-reports-v2';
+const CACHE_NAME = 'foto-reports-v3';
 
 const PRECACHE = [
   './',
@@ -11,9 +11,7 @@ const PRECACHE = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE).catch(() => {});
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE).catch(() => {}))
   );
   self.skipWaiting();
 });
@@ -34,7 +32,7 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request)
+      return fetch(event.request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseClone = networkResponse.clone();
@@ -44,9 +42,7 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         })
-        .catch(() => null);
-
-      return cached || fetchPromise;
+        .catch(() => cached || new Response('Offline', { status: 503 }));
     })
   );
 });
