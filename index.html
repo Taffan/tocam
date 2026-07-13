@@ -48,6 +48,17 @@
           <div class="empty-state-text">Нет сохранённых отчётов</div>
         </div>
       </div>
+      
+      <div class="install-card" id="install-card">
+        <div class="install-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/><path d="M12 8v6m-3-3l3 3 3-3"/></svg>
+        </div>
+        <div class="install-card-text">
+          <div class="install-card-title">Установите приложение</div>
+          <div class="install-card-desc">Работает без интернета, быстрый доступ с главного экрана</div>
+        </div>
+        <button class="btn btn-primary" id="btn-install-home">Установить</button>
+      </div>
     </section>
 
     <!-- CONFIG PAGE -->
@@ -276,9 +287,9 @@
     </div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="lib/jszip.min.js"></script>
+  <script src="lib/zxing.min.js"></script>
+  <script src="lib/xlsx.min.js"></script>
   <script src="data.js?v=7"></script>
   <script src="app.js?v=7"></script>
   <script>

@@ -6,7 +6,10 @@ const PRECACHE = [
   './styles.css?v=7',
   './app.js?v=7',
   './data.js?v=7',
-  './manifest.json'
+  './manifest.json',
+  './lib/jszip.min.js',
+  './lib/zxing.min.js',
+  './lib/xlsx.min.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -32,17 +35,14 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      return fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseClone);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => cached || new Response('Offline', { status: 503 }));
+      if (cached) return cached;
+      return fetch(event.request).then((response) => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      }).catch(() => new Response('Offline', { status: 503 }));
     })
   );
 });
