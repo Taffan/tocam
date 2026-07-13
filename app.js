@@ -1,6 +1,17 @@
 (function() {
   'use strict';
 
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(reg => reg.unregister());
+    });
+  }
+  if (window.caches) {
+    caches.keys().then(names => {
+      names.forEach(name => caches.delete(name));
+    });
+  }
+
   const DB_NAME = 'PhotoReportsDB_v6';
   const STORE_NAME = 'reports';
 
