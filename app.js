@@ -977,6 +977,7 @@
   }
 
   let savedArchiveFilename = '';
+  let cachedZipBlob = null;
 
   async function saveArchive() {
     const btn = document.getElementById('btn-save-archive');
@@ -987,6 +988,7 @@
     document.getElementById('archive-loading-text').textContent = 'Создание архива...';
     try {
       const blob = await buildZipBlob();
+      cachedZipBlob = blob;
       const typeCode = (currentReport.objectType || '').toUpperCase();
       const dateStr = (currentReport.date || '').replace(/-/g, '.');
       savedArchiveFilename = `${typeCode}_${currentReport.reportName || 'report'}_${dateStr}.zip`;
@@ -1009,11 +1011,12 @@
   async function sendReport() {
     const reportName = currentReport.reportName || 'Отчёт';
     try {
-      const blob = await buildZipBlob();
-      const typeCode = (currentReport.objectType || '').toUpperCase();
-      const dateStr = (currentReport.date || '').replace(/-/g, '.');
-      const filename = savedArchiveFilename || `${typeCode}_${reportName}_${dateStr}.zip`;
-      const file = new File([blob], filename, { type: 'application/zip' });
+      if (!cachedZipBlob) {
+        const blob = await buildZipBlob();
+        cachedZipBlob = blob;
+      }
+      const filename = savedArchiveFilename || `${(currentReport.objectType || '').toUpperCase()}_${reportName}_${(currentReport.date || '').replace(/-/g, '.')}.zip`;
+      const file = new File([cachedZipBlob], filename, { type: 'application/zip' });
       await navigator.share({ title: `Фотоотчёт: ${reportName}`, files: [file] });
     } catch (err) {
       if (err && err.name === 'AbortError') return;
