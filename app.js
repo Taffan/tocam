@@ -36,7 +36,8 @@
   let deferredPrompt = null;
   let pageHistory = ['home'];
   let currentPage = 'home';
-
+  let cachedZipBlob = null;
+  let reportDiscarded = false;
 
   function init() {
     initDB().then(() => {
@@ -78,21 +79,18 @@
   }
 
   function setupInstallPrompt() {
-    const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-    if (isStandalone) return;
-
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
     if (isIOS) {
-      document.getElementById('btn-close-ios').addEventListener('click', () => {
-        document.getElementById('ios-install').classList.add('hidden');
-        localStorage.setItem('iosInstallShown', 'true');
-      });
       if (!localStorage.getItem('iosInstallShown')) {
         setTimeout(() => {
           document.getElementById('ios-install').classList.remove('hidden');
         }, 2000);
       }
+      document.getElementById('btn-close-ios').addEventListener('click', () => {
+        document.getElementById('ios-install').classList.add('hidden');
+        localStorage.setItem('iosInstallShown', 'true');
+      });
     } else {
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
@@ -102,10 +100,6 @@
             document.getElementById('install-prompt').classList.remove('hidden');
           }, 3000);
         }
-      });
-
-      window.addEventListener('appinstalled', () => {
-        document.getElementById('install-prompt').classList.add('hidden');
       });
 
       document.getElementById('btn-install').addEventListener('click', async () => {
@@ -126,30 +120,7 @@
 
   function setupEventListeners() {
     document.getElementById('header-back').addEventListener('click', goBack);
-    document.getElementById('header-menu').addEventListener('click', (e) => {
-      const menu = document.getElementById('menu-dropdown');
-      menu.classList.toggle('hidden');
-    });
-    document.getElementById('menu-backdrop').addEventListener('click', () => {
-      document.getElementById('menu-dropdown').classList.add('hidden');
-    });
-    document.getElementById('menu-install').addEventListener('click', async () => {
-      document.getElementById('menu-dropdown').classList.add('hidden');
-      if (deferredPrompt) {
-        await deferredPrompt.prompt();
-        deferredPrompt = null;
-        localStorage.setItem('installPromptShown', 'true');
-        document.getElementById('install-prompt')?.classList.add('hidden');
-      } else {
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        if (isIOS) {
-          document.getElementById('ios-install')?.classList.remove('hidden');
-        } else {
-          showToast('Приложение уже установлено или не поддерживается');
-        }
-      }
-    });
-    document.getElementById('btn-new-report').addEventListener('click', () => showPage('config'));
+    document.getElementById('btn-new-report').addEventListener('click', () => { cachedZipBlob = null; showPage('config'); });
 
     document.querySelectorAll('.type-btn').forEach(btn => {
       btn.addEventListener('click', () => selectType(btn.dataset.type));
@@ -172,6 +143,10 @@
       saveReport();
       showChecklist();
     });
+    document.getElementById('back-from-ke').addEventListener('click', () => {
+      stopScanner();
+      showPhotoSection();
+    });
 
     document.getElementById('report-form').addEventListener('submit', handleFormSubmit);
     document.getElementById('btn-finish-report').addEventListener('click', () => {
@@ -182,8 +157,28 @@
     document.getElementById('camera-input').addEventListener('change', handleCameraCapture);
     document.getElementById('gallery-input').addEventListener('change', handleGallerySelect);
 
-    document.getElementById('ke-cam-capture').addEventListener('click', captureKEPhoto);
-    document.getElementById('ke-cam-close').addEventListener('click', closeKECamera);
+    document.getElementById('btn-save-ke').addEventListener('click', () => {
+      stopScanner();
+      showChecklist();
+    });
+    document.getElementById('btn-ke-add-manual').addEventListener('click', () => {
+      const input = document.getElementById('ke-manual-input');
+      const code = input.value.trim();
+      if (code) {
+        addKECode(code);
+        input.value = '';
+        input.focus();
+      }
+    });
+    document.getElementById('ke-manual-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const code = e.target.value.trim();
+        if (code) {
+          addKECode(code);
+          e.target.value = '';
+        }
+      }
+    });
 
     document.getElementById('btn-send-report').addEventListener('click', sendReport);
     document.getElementById('btn-delete-report').addEventListener('click', deleteReport);
@@ -556,11 +551,7 @@
         container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
         item.classList.add('selected');
         
-        if (pt?.isKE) {
-          openKECamera(typeId);
-        } else {
-          document.getElementById('camera-input').click();
-        }
+        document.getElementById('camera-input').click();
       });
     });
 
@@ -678,43 +669,32 @@
     showToast('Секция сохранена');
   }
 
-  let keCamStream = null;
-  let keCamScanTimer = null;
-  let keCamDetectedCode = null;
-  let keCamActiveTypeId = null;
-
-  async function openKECamera(typeId) {
-    keCamActiveTypeId = typeId;
-    keCamDetectedCode = null;
-
-    const modal = document.getElementById('ke-camera-modal');
-    modal.classList.remove('hidden');
-
-    const frame = document.getElementById('ke-cam-frame');
-    frame.classList.remove('detected');
-    frame.classList.add('scanning');
-
-    document.getElementById('ke-cam-status').textContent = 'Наведите на штрих-код';
-
-    const video = document.getElementById('ke-cam-video');
+  async function openKEScanner() {
+    showPage('ke');
+    const section = currentReport.sections[currentSectionIndex];
 
     try {
-      keCamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      video.srcObject = keCamStream;
+      stopScanner();
+      const video = document.getElementById('ke-video');
+      const frame = document.getElementById('ke-frame');
+      const codeText = document.getElementById('ke-code-text');
+      const detectedBox = document.getElementById('ke-detected-code');
+      const scanLine = document.getElementById('ke-scan-line');
+
+      videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      video.srcObject = videoStream;
+      lastScannedCode = null;
+      scanCooldown = false;
 
       if ('BarcodeDetector' in window) {
         const det = new BarcodeDetector({
           formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417']
         });
-        keCamScanTimer = setInterval(async () => {
-          if (video.readyState < 2) return;
+        scanTimer = setInterval(async () => {
+          if (scanCooldown || video.readyState < 2) return;
           try {
             const codes = await det.detect(video);
-            if (codes.length) {
-              onKECamDetected(codes[0].rawValue);
-            } else {
-              onKECamLost();
-            }
+            if (codes.length) onScanDetected(codes[0].rawValue);
           } catch(e) {}
         }, 300);
       } else if (typeof ZXing !== 'undefined') {
@@ -725,15 +705,17 @@
           ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.UPC_A,
           ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.ITF
         ]);
-        const reader = new ZXing.MultiFormatReader();
-        reader.setHints(hints);
+        codeReader = new ZXing.MultiFormatReader();
+        codeReader.setHints(hints);
+
         const cv = document.createElement('canvas');
         cv.style.display = 'none';
-        cv.id = 'ke-zxing-cv';
+        cv.id = 'zxing-cv';
         document.body.appendChild(cv);
         const ctx = cv.getContext('2d');
-        keCamScanTimer = setInterval(() => {
-          if (video.readyState < 2) return;
+
+        scanTimer = setInterval(() => {
+          if (scanCooldown || video.readyState < 2) return;
           try {
             cv.width = video.videoWidth;
             cv.height = video.videoHeight;
@@ -741,78 +723,49 @@
             const imgData = ctx.getImageData(0, 0, cv.width, cv.height);
             const lum = new ZXing.RGBLuminanceSource(imgData.data, cv.width, cv.height);
             const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
-            const result = reader.decode(bmp);
-            if (result) {
-              onKECamDetected(result.getText());
-            } else {
-              onKECamLost();
-            }
-          } catch(e) { onKECamLost(); }
+            const result = codeReader.decode(bmp);
+            if (result) onScanDetected(result.getText());
+          } catch(e) {}
         }, 400);
       } else {
-        showToast('Сканер не поддерживается');
+        showToast('Сканер не поддерживается — используйте ручной ввод');
       }
+
+      renderKEList();
     } catch (err) {
-      showToast('Камера недоступна');
-      closeKECamera();
-    }
-  }
-
-  function onKECamDetected(code) {
-    keCamDetectedCode = code;
-    const frame = document.getElementById('ke-cam-frame');
-    frame.classList.remove('scanning');
-    frame.classList.add('detected');
-    document.getElementById('ke-cam-status').textContent = '✓ ' + code;
-    if (navigator.vibrate) navigator.vibrate(30);
-  }
-
-  function onKECamLost() {
-    keCamDetectedCode = null;
-    const frame = document.getElementById('ke-cam-frame');
-    frame.classList.remove('detected');
-    frame.classList.add('scanning');
-    document.getElementById('ke-cam-status').textContent = 'Наведите на штрих-код';
-  }
-
-  function captureKEPhoto() {
-    if (!keCamActiveTypeId) return;
-    const video = document.getElementById('ke-cam-video');
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-    const section = currentReport.sections[currentSectionIndex];
-    const photoNumber = section.photos.filter(p => p.typeId === keCamActiveTypeId).length + 1;
-    section.photos.push({
-      id: generateId(),
-      typeId: keCamActiveTypeId,
-      photoNumber: photoNumber,
-      dataUrl: dataUrl,
-      timestamp: new Date().toISOString()
-    });
-    if (keCamDetectedCode) {
-      if (!currentReport.keCodes) currentReport.keCodes = [];
-      if (!currentReport.keCodes.includes(keCamDetectedCode)) {
-        currentReport.keCodes.push(keCamDetectedCode);
+      if (err.name === 'NotAllowedError') {
+        showToast('Разрешите доступ к камере в браузере');
+      } else {
+        showToast('Камера недоступна: ' + err.message);
       }
     }
-    saveReport();
-    closeKECamera();
-    renderSectionPhotos(section);
-    renderPhotoTypes(section);
-    showToast('Фото КЕ сохранено');
   }
 
-  function closeKECamera() {
-    if (keCamScanTimer) { clearInterval(keCamScanTimer); keCamScanTimer = null; }
-    if (keCamStream) { keCamStream.getTracks().forEach(t => t.stop()); keCamStream = null; }
-    const cv = document.getElementById('ke-zxing-cv');
-    if (cv) cv.remove();
-    document.getElementById('ke-camera-modal').classList.add('hidden');
-    keCamDetectedCode = null;
-    keCamActiveTypeId = null;
+  function onScanDetected(code) {
+    if (scanCooldown) return;
+    const clean = code.replace(/[^0-9]/g, '');
+    if (clean.length !== 13 && clean.length !== 4) {
+      return;
+    }
+    if (lastScannedCode === code) return;
+    lastScannedCode = code;
+
+    scanCooldown = true;
+    setTimeout(() => { scanCooldown = false; lastScannedCode = null; }, 2000);
+
+    if (navigator.vibrate) navigator.vibrate(60);
+    beepFeedback();
+
+    const frame = document.getElementById('ke-frame');
+    const detectedBox = document.getElementById('ke-detected-code');
+    const codeText = document.getElementById('ke-code-text');
+
+    if (frame) frame.classList.add('detected');
+    if (detectedBox) detectedBox.classList.add('detected');
+    if (codeText) codeText.textContent = code;
+
+    showToast('✓ ' + code);
+    addKECode(code);
   }
 
   function beepFeedback() {
@@ -950,7 +903,6 @@
     currentReport.completedAt = new Date().toISOString();
     saveReport();
     showComplete();
-    preBuildArchive();
   }
 
   function showComplete() {
@@ -972,64 +924,7 @@
       <div class="stat"><div class="stat-value">${Math.round((doneTypes/totalTypes)*100)}%</div><div class="stat-label">Готово</div></div>
     `;
 
-    document.getElementById('archive-loading').classList.add('hidden');
-  }
-
-  let cachedZipBlob = null;
-  let reportDiscarded = false;
-
-  function preBuildArchive() {
-    const btn = document.getElementById('btn-send-report');
-    btn.disabled = true;
-    btn.innerHTML = 'Создание архива...';
-    buildZipBlob().then(blob => {
-      if (reportDiscarded) return;
-      cachedZipBlob = blob;
-      btn.disabled = false;
-      btn.innerHTML = `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Отправить отчёт`;
-    }).catch(() => {
-      if (reportDiscarded) return;
-      btn.disabled = false;
-      btn.textContent = 'Отправить отчёт';
-    });
-  }
-
-  function sendReport() {
-    if (!cachedZipBlob) {
-      showToast('Архив ещё создаётся, повторите');
-      return;
-    }
-    const reportName = currentReport.reportName || 'Отчёт';
-    const filename = `${(currentReport.objectType || '').toUpperCase()}_${reportName}_${(currentReport.date || '').replace(/-/g, '.')}.zip`;
-    const file = new File([cachedZipBlob], filename, { type: 'application/zip' });
-    navigator.share({ title: `Фотоотчёт: ${reportName}`, text: `Фотоотчёт: ${reportName}`, files: [file] }).catch(err => {
-      if (err && err.name === 'AbortError') return;
-      downloadBlob(cachedZipBlob, filename);
-      showToast('Архив сохранён в Загрузки');
-    });
-  }
-
-  function downloadBlob(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 1000);
-  }
-
-  function deleteReport() {
-    reportDiscarded = true;
-    if (currentReport && currentReport.id) {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      tx.objectStore(STORE_NAME).delete(currentReport.id);
-    }
-    cachedZipBlob = null;
-    currentReport = null;
-    showPage('home');
+    preBuildArchive();
   }
 
   function getXlsxFilename() {
@@ -1108,6 +1003,60 @@
     return ws_data;
   }
 
+  function preBuildArchive() {
+    const btn = document.getElementById('btn-send-report');
+    btn.disabled = true;
+    btn.innerHTML = 'Создание архива...';
+    buildZipBlob().then(blob => {
+      if (reportDiscarded) return;
+      cachedZipBlob = blob;
+      btn.disabled = false;
+      btn.innerHTML = `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Отправить отчёт`;
+    }).catch(() => {
+      if (reportDiscarded) return;
+      btn.disabled = false;
+      btn.textContent = 'Отправить отчёт';
+    });
+  }
+
+  function sendReport() {
+    if (!cachedZipBlob) {
+      showToast('Архив ещё создаётся, повторите');
+      return;
+    }
+    const reportName = currentReport.reportName || 'Отчёт';
+    const filename = `${(currentReport.objectType || '').toUpperCase()}_${reportName}_${(currentReport.date || '').replace(/-/g, '.')}.zip`;
+    const file = new File([cachedZipBlob], filename, { type: 'application/zip' });
+    navigator.share({ title: `Фотоотчёт: ${reportName}`, text: `Фотоотчёт: ${reportName}`, files: [file] }).catch(err => {
+      if (err && err.name === 'AbortError') return;
+      downloadBlob(cachedZipBlob, filename);
+      showToast('Архив сохранён в Загрузки');
+    });
+  }
+
+  function deleteReport() {
+    reportDiscarded = true;
+    if (currentReport && currentReport.id) {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).delete(currentReport.id);
+    }
+    cachedZipBlob = null;
+    currentReport = null;
+    showPage('home');
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1000);
+  }
+
   function generateReportJSON() {
     const photos = [];
     currentReport.sections.forEach(sec => {
@@ -1177,35 +1126,18 @@
       }
     }
 
-    const allKEPhotos = [];
-    for (const sec of currentReport.sections) {
-      for (const photo of sec.photos) {
-        const pt = sec.photoTypes.find(t => t.id === photo.typeId);
-        if (pt && pt.isKE) {
-          const fn = pt.filename;
-          allKEPhotos.push({ filename: fn.endsWith('.jpg') ? fn : fn + '.jpg', code: null });
-        }
-      }
-    }
-
-    const keyCodes = currentReport.keCodes || [];
-    allKEPhotos.forEach((p, i) => { if (i < keyCodes.length) p.code = keyCodes[i]; });
-
-    const kePhotoCount = allKEPhotos.length;
-
-    const lines = [`Фото Отчёт — ${currentReport.reportName}`, `Дата: ${currentReport.date}`, `Техник: ${currentReport.technician}`, '', `Всего фото: ${photoCount}`, `КЕ фото: ${kePhotoCount}`, `КЕ кодов: ${keyCodes.length}`, ''];
-    if (keyCodes.length > 0) {
-      lines.push('КЕ коды:');
-      keyCodes.forEach(code => lines.push(`  ${code}`));
-    }
-    lines.push('');
-    lines.push('КЕ коды + название фото:');
-    if (allKEPhotos.length > 0) {
-      allKEPhotos.forEach(p => {
-        lines.push(`  ${p.code || '(код не обнаружен)'} — ${p.filename}`);
+    const keCodes = currentReport.sections.reduce((acc, sec) => {
+      const kePhotos = sec.photos.filter(p => {
+        const pt = sec.photoTypes.find(t => t.id === p.typeId);
+        return pt && pt.isKE;
       });
-    } else {
-      lines.push('  (нет фото КЕ)');
+      return acc + kePhotos.length;
+    }, 0);
+
+    const lines = [`Фото Отчёт — ${currentReport.reportName}`, `Дата: ${currentReport.date}`, `Техник: ${currentReport.technician}`, '', `Всего фото: ${photoCount}`, `КЕ фото: ${keCodes}`, `КЕ кодов: ${currentReport.keCodes ? currentReport.keCodes.length : 0}`, ''];
+    if (currentReport.keCodes && currentReport.keCodes.length > 0) {
+      lines.push('КЕ коды:');
+      currentReport.keCodes.forEach(code => lines.push(`  ${code}`));
     }
     zip.file('КЕ.txt', lines.join('\n'));
 
