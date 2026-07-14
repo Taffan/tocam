@@ -987,7 +987,9 @@
     document.getElementById('archive-loading-text').textContent = 'Создание архива...';
     try {
       const blob = await buildZipBlob();
-      savedArchiveFilename = `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
+      const typeCode = (currentReport.objectType || '').toUpperCase();
+      const dateStr = (currentReport.date || '').replace(/-/g, '.');
+      savedArchiveFilename = `${typeCode}_${currentReport.reportName || 'report'}_${dateStr}.zip`;
       downloadBlob(blob, savedArchiveFilename);
       loading.classList.add('hidden');
       btn.classList.remove('hidden');
@@ -1006,36 +1008,17 @@
 
   async function sendReport() {
     const reportName = currentReport.reportName || 'Отчёт';
-    const technician = currentReport.technician || '';
-    const date = currentReport.date || '';
-    let totalPhotos = 0;
-    currentReport.sections.forEach(s => totalPhotos += s.photos.length);
-    const msg = `Фотоотчёт: ${reportName}\nТехник: ${technician}\nДата: ${date}\nСекций: ${currentReport.sections.length}\nФото: ${totalPhotos}`;
-
-    if (navigator.share) {
+    try {
       const blob = await buildZipBlob();
-      const file = new File([blob], savedArchiveFilename || 'report.zip', { type: 'application/zip' });
-      try {
-        const sharePromise = navigator.share({ title: `Фотоотчёт: ${reportName}`, text: msg, files: [file] });
-        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000));
-        await Promise.race([sharePromise, timeout]);
-        return;
-      } catch (err) {
-        if (err && err.name === 'AbortError') return;
-      }
-      try {
-        await navigator.share({ title: `Фотоотчёт: ${reportName}`, text: msg });
-        showToast('Архив в Загрузках — приложите к сообщению');
-        return;
-      } catch (err) {
-        if (err && err.name === 'AbortError') return;
-      }
+      const typeCode = (currentReport.objectType || '').toUpperCase();
+      const dateStr = (currentReport.date || '').replace(/-/g, '.');
+      const filename = savedArchiveFilename || `${typeCode}_${reportName}_${dateStr}.zip`;
+      const file = new File([blob], filename, { type: 'application/zip' });
+      await navigator.share({ title: `Фотоотчёт: ${reportName}`, files: [file] });
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+      showToast('Ошибка: ' + err.message);
     }
-
-    const subject = encodeURIComponent(`Фотоотчёт: ${reportName}`);
-    const body = encodeURIComponent(msg + `\n\nФайл архива: ${savedArchiveFilename}\n(приложите файл из папки Загрузки)`);
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
-    showToast('Откройте письмо и приложите файл из Загрузок');
   }
 
   function getXlsxFilename() {

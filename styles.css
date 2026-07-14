@@ -1201,59 +1201,6 @@ body {
 }
 
 /* Install Card on Home */
-.install-card {
-  display: none;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  margin-top: 20px;
-  background: var(--surface);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-}
-
-.install-card.visible {
-  display: flex;
-}
-
-.install-card-icon {
-  width: 44px;
-  height: 44px;
-  background: var(--primary-light);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.install-card-icon svg {
-  width: 24px;
-  height: 24px;
-  color: var(--primary);
-}
-
-.install-card-text {
-  flex: 1;
-}
-
-.install-card-title {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.install-card-desc {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 2px;
-}
-
-.install-card .btn {
-  flex-shrink: 0;
-  padding: 10px 16px;
-  font-size: 13px;
-}
-
 /* iOS Install Info */
 .ios-install {
   position: fixed;
