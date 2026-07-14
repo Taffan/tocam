@@ -1,11 +1,11 @@
-const CACHE_NAME = 'foto-reports-v9';
+const CACHE_NAME = 'foto-reports-v11';
 
 const PRECACHE = [
   './',
   './index.html',
-  './styles.css?v=9',
-  './app.js?v=9',
-  './data.js?v=9',
+  './styles.css',
+  './app.js',
+  './data.js',
   './manifest.json',
   './lib/jszip.min.js',
   './lib/zxing.min.js',

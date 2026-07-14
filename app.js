@@ -36,8 +36,7 @@
   let deferredPrompt = null;
   let pageHistory = ['home'];
   let currentPage = 'home';
-  let cachedBlob = null;
-  let cachedFilename = '';
+
 
   function init() {
     initDB().then(() => {
@@ -130,7 +129,30 @@
 
   function setupEventListeners() {
     document.getElementById('header-back').addEventListener('click', goBack);
-    document.getElementById('btn-new-report').addEventListener('click', () => { cachedBlob = null; showPage('config'); });
+    document.getElementById('header-menu').addEventListener('click', (e) => {
+      const menu = document.getElementById('menu-dropdown');
+      menu.classList.toggle('hidden');
+    });
+    document.getElementById('menu-backdrop').addEventListener('click', () => {
+      document.getElementById('menu-dropdown').classList.add('hidden');
+    });
+    document.getElementById('menu-install').addEventListener('click', async () => {
+      document.getElementById('menu-dropdown').classList.add('hidden');
+      if (deferredPrompt) {
+        await deferredPrompt.prompt();
+        deferredPrompt = null;
+        document.getElementById('install-card')?.classList.remove('visible');
+        localStorage.setItem('installPromptShown', 'true');
+      } else {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (isIOS) {
+          document.getElementById('ios-install')?.classList.remove('hidden');
+        } else {
+          showToast('Приложение уже установлено или не поддерживается');
+        }
+      }
+    });
+    document.getElementById('btn-new-report').addEventListener('click', () => showPage('config'));
 
     document.querySelectorAll('.type-btn').forEach(btn => {
       btn.addEventListener('click', () => selectType(btn.dataset.type));
@@ -175,23 +197,10 @@
       }
     });
 
-    document.getElementById('btn-download').addEventListener('click', () => {
-      if (currentReport.status !== 'completed') {
-        showToast('Сначала завершите отчёт');
-        return;
-      }
-      downloadArchive();
-    });
-    document.getElementById('btn-share').addEventListener('click', () => {
-      if (currentReport.status !== 'completed') {
-        showToast('Сначала завершите отчёт');
-        return;
-      }
-      shareReport();
-    });
+    document.getElementById('btn-save-archive').addEventListener('click', saveArchive);
+    document.getElementById('btn-send-report').addEventListener('click', sendReport);
     document.getElementById('btn-new-from-complete').addEventListener('click', () => {
       currentReport = null;
-      cachedBlob = null;
       showPage('home');
     });
   }
@@ -955,19 +964,6 @@
 
   function showComplete() {
     showPage('complete');
-    const loadingEl = document.getElementById('complete-loading');
-    const actionsEl = document.querySelector('.complete-actions');
-    loadingEl.classList.add('show');
-    actionsEl.classList.add('hidden');
-    buildZipBlob().then(blob => {
-      cachedBlob = blob;
-      cachedFilename = `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
-      loadingEl.classList.remove('show');
-      actionsEl.classList.remove('hidden');
-    }).catch(() => {
-      loadingEl.classList.remove('show');
-      actionsEl.classList.remove('hidden');
-    });
     let totalPhotos = 0;
     let doneTypes = 0;
     let totalTypes = 0;
@@ -984,6 +980,63 @@
       <div class="stat"><div class="stat-value">${totalPhotos}</div><div class="stat-label">Фото</div></div>
       <div class="stat"><div class="stat-value">${Math.round((doneTypes/totalTypes)*100)}%</div><div class="stat-label">Готово</div></div>
     `;
+
+    document.getElementById('step-archive-status').textContent = 'Нажмите для сохранения';
+    document.getElementById('step-send-status').textContent = 'Архив ещё не сохранён';
+    document.getElementById('btn-send-report').disabled = true;
+    document.getElementById('archive-loading').classList.add('hidden');
+    document.getElementById('btn-save-archive').classList.remove('hidden');
+  }
+
+  let savedArchiveFilename = '';
+
+  async function saveArchive() {
+    const btn = document.getElementById('btn-save-archive');
+    const loading = document.getElementById('archive-loading');
+    const status = document.getElementById('step-archive-status');
+    btn.classList.add('hidden');
+    loading.classList.remove('hidden');
+    document.getElementById('archive-loading-text').textContent = 'Создание архива...';
+    try {
+      const blob = await buildZipBlob();
+      savedArchiveFilename = `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
+      downloadBlob(blob, savedArchiveFilename);
+      loading.classList.add('hidden');
+      btn.classList.remove('hidden');
+      btn.textContent = '✓ Архив сохранён';
+      btn.disabled = true;
+      status.textContent = `✓ ${savedArchiveFilename}`;
+      document.getElementById('step-send-status').textContent = 'Готов к отправке';
+      document.getElementById('btn-send-report').disabled = false;
+      showToast('Архив сохранён в Загрузки');
+    } catch (e) {
+      loading.classList.add('hidden');
+      btn.classList.remove('hidden');
+      showToast('Ошибка: ' + e.message);
+    }
+  }
+
+  async function sendReport() {
+    const reportName = currentReport.reportName || 'Отчёт';
+    const technician = currentReport.technician || '';
+    const date = currentReport.date || '';
+    let totalPhotos = 0;
+    currentReport.sections.forEach(s => totalPhotos += s.photos.length);
+    const msg = `Фотоотчёт: ${reportName}\nТехник: ${technician}\nДата: ${date}\nСекций: ${currentReport.sections.length}\nФото: ${totalPhotos}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Фотоотчёт: ${reportName}`, text: msg });
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+      }
+    }
+
+    const subject = encodeURIComponent(`Фотоотчёт: ${reportName}`);
+    const body = encodeURIComponent(msg + `\n\nФайл архива: ${savedArchiveFilename}\n(приложите файл из папки Загрузки)`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    showToast('Откройте письмо и приложите файл из Загрузок');
   }
 
   function getXlsxFilename() {
@@ -1062,18 +1115,6 @@
     return ws_data;
   }
 
-  async function downloadArchive() {
-    showToast('Создание архива...');
-    try {
-      const blob = cachedBlob || await buildZipBlob();
-      const filename = cachedFilename || `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
-      downloadBlob(blob, filename);
-      showToast('Архив скачан');
-    } catch (e) {
-      showToast('Ошибка: ' + e.message);
-    }
-  }
-
   function generateReportJSON() {
     const photos = [];
     currentReport.sections.forEach(sec => {
@@ -1121,55 +1162,6 @@
     }, 1000);
   }
 
-  function sendEmail() {
-    doShareOrDownload();
-  }
-
-  function shareReport() {
-    doShareOrDownload();
-  }
-
-  async function doShareOrDownload() {
-    showToast('Подготовка...');
-    try {
-      const blob = cachedBlob || await buildZipBlob();
-      const filename = cachedFilename || `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
-
-      if (navigator.share) {
-        const file = new File([blob], filename, { type: 'application/zip' });
-        try {
-          const sharePromise = navigator.share({
-            title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
-            text: `${currentReport.reportName} | ${currentReport.technician} | ${currentReport.date}`,
-            files: [file]
-          });
-          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000));
-          await Promise.race([sharePromise, timeout]);
-          return;
-        } catch (err) {
-          if (err && err.name === 'AbortError') return;
-        }
-
-        try {
-          await navigator.share({
-            title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
-            text: `${currentReport.reportName} | ${currentReport.technician} | ${currentReport.date}`
-          });
-          showToast(`Архив "${filename}" сохранён — приложите к сообщению`);
-          downloadBlob(blob, filename);
-          return;
-        } catch (err) {
-          if (err && err.name === 'AbortError') return;
-        }
-      }
-
-      downloadBlob(blob, filename);
-      showToast('Архив скачан');
-    } catch (e) {
-      showToast('Ошибка: ' + e.message);
-    }
-  }
-
   async function buildZipBlob() {
     const zip = new JSZip();
 
@@ -1204,18 +1196,35 @@
       }
     }
 
-    const keCodes = currentReport.sections.reduce((acc, sec) => {
-      const kePhotos = sec.photos.filter(p => {
-        const pt = sec.photoTypes.find(t => t.id === p.typeId);
-        return pt && pt.isKE;
-      });
-      return acc + kePhotos.length;
-    }, 0);
+    const allKEPhotos = [];
+    for (const sec of currentReport.sections) {
+      for (const photo of sec.photos) {
+        const pt = sec.photoTypes.find(t => t.id === photo.typeId);
+        if (pt && pt.isKE) {
+          const fn = pt.filename;
+          allKEPhotos.push({ filename: fn.endsWith('.jpg') ? fn : fn + '.jpg', code: null });
+        }
+      }
+    }
 
-    const lines = [`Фото Отчёт — ${currentReport.reportName}`, `Дата: ${currentReport.date}`, `Техник: ${currentReport.technician}`, '', `Всего фото: ${photoCount}`, `КЕ фото: ${keCodes}`, `КЕ кодов: ${currentReport.keCodes ? currentReport.keCodes.length : 0}`, ''];
-    if (currentReport.keCodes && currentReport.keCodes.length > 0) {
+    const keyCodes = currentReport.keCodes || [];
+    allKEPhotos.forEach((p, i) => { if (i < keyCodes.length) p.code = keyCodes[i]; });
+
+    const kePhotoCount = allKEPhotos.length;
+
+    const lines = [`Фото Отчёт — ${currentReport.reportName}`, `Дата: ${currentReport.date}`, `Техник: ${currentReport.technician}`, '', `Всего фото: ${photoCount}`, `КЕ фото: ${kePhotoCount}`, `КЕ кодов: ${keyCodes.length}`, ''];
+    if (keyCodes.length > 0) {
       lines.push('КЕ коды:');
-      currentReport.keCodes.forEach(code => lines.push(`  ${code}`));
+      keyCodes.forEach(code => lines.push(`  ${code}`));
+    }
+    lines.push('');
+    lines.push('КЕ коды + название фото:');
+    if (allKEPhotos.length > 0) {
+      allKEPhotos.forEach(p => {
+        lines.push(`  ${p.code || '(код не обнаружен)'} — ${p.filename}`);
+      });
+    } else {
+      lines.push('  (нет фото КЕ)');
     }
     zip.file('КЕ.txt', lines.join('\n'));
 
