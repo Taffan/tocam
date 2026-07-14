@@ -1001,12 +1001,21 @@
     const btn = document.getElementById('btn-send-report');
     btn.disabled = true;
     btn.innerHTML = 'Создание архива...';
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      btn.disabled = false;
+      btn.textContent = 'Отправить отчёт';
+      showToast('Не удалось создать архив');
+    }, 30000);
     buildZipBlob().then(blob => {
-      if (reportDiscarded) return;
+      clearTimeout(timer);
+      if (reportDiscarded || timedOut) return;
       cachedZipBlob = blob;
       btn.disabled = false;
       btn.innerHTML = `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Отправить отчёт`;
     }).catch(() => {
+      clearTimeout(timer);
       if (reportDiscarded) return;
       btn.disabled = false;
       btn.textContent = 'Отправить отчёт';
@@ -1107,7 +1116,8 @@
         if (!pt) continue;
         itemNum++;
         photoCount++;
-        const base64 = photo.dataUrl.split(',')[1];
+        if (!photo.dataUrl) continue;
+        const base64 = photo.dataUrl.split(',')[1] || '';
         let filename = pt.filename;
         if (pt.multi && photo.photoNumber > 1) {
           filename = filename.replace('.jpg', ` ${photo.photoNumber}.jpg`);
