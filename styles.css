@@ -850,6 +850,69 @@ body {
   border-color: var(--success);
 }
 
+.photo-types-group.sn-group {
+  background: #FFF3E0;
+  border-color: #FF9800;
+}
+
+.photo-types-group.sn-group h4 {
+  color: #E65100;
+}
+
+.ke-sn-container {
+  display: flex;
+  gap: 8px;
+}
+
+.ke-sn-header {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.ke-sn-header span {
+  text-align: center;
+}
+
+.ke-sn-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ke-sn-column .photo-type-item {
+  width: 100%;
+  padding: 10px 12px;
+}
+
+.ke-sn-column .photo-type-name {
+  font-size: 13px;
+}
+
+.ke-sn-column .photo-type-check {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+}
+
+.photo-type-item.sn-type .photo-type-check {
+  background: #FF9800;
+  border-color: #FF9800;
+}
+
+.photo-type-item.sn-type:hover {
+  background: #FFF3E0;
+}
+
+.photo-type-item.sn-type.done .photo-type-check {
+  background: var(--success);
+  border-color: var(--success);
+}
+
 .photo-type-check svg {
   width: 20px;
   height: 20px;

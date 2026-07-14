@@ -182,6 +182,10 @@
       currentReport = null;
       showPage('home');
     });
+
+    document.getElementById('ke-cam-capture').addEventListener('click', keCamCapture);
+    document.getElementById('ke-cam-close').addEventListener('click', closeKEModal);
+    document.getElementById('ke-cam-video').addEventListener('click', keCamCapture);
   }
 
   function showPage(pageName) {
@@ -294,7 +298,8 @@
   function selectType(type) {
     selectedType = type;
     document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
-    document.querySelector(`.type-btn[data-type="${type}"]`).classList.add('selected');
+    const btn = document.querySelector(`.type-btn[data-type="${type}"]`);
+    if (btn) btn.classList.add('selected');
     document.getElementById('input-type').value = type;
     renderEquipmentConfig(type);
     updateConfigButton();
@@ -428,13 +433,14 @@
     let done = 0, total = 0;
     currentReport.sections.forEach(sec => {
       sec.photoTypes.forEach(pt => {
+        if (pt.isKE || pt.isSN) return;
         total++;
         if (sec.photos.some(p => p.typeId === pt.id)) done++;
       });
     });
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
     document.getElementById('progress-fill').style.width = `${pct}%`;
-    document.getElementById('progress-text').textContent = `${pct}% (${done}/${total})`;
+    document.getElementById('progress-text').textContent = `${pct}% (${done}/${total} фото)`;
 
     const statusEl = document.getElementById('finish-status');
     statusEl.textContent = `Готовность: ${pct}% (${done}/${total} фото)`;
@@ -445,8 +451,10 @@
     const container = document.getElementById('sections-checklist');
 
     container.innerHTML = currentReport.sections.map((sec, i) => {
-      let done = 0, total = sec.photoTypes.length;
+      let done = 0, total = 0;
       sec.photoTypes.forEach(pt => {
+        if (pt.isKE || pt.isSN) return;
+        total++;
         if (sec.photos.some(p => p.typeId === pt.id)) done++;
       });
       const statusClass = done === total ? 'completed' : done > 0 ? 'in-progress' : '';
@@ -489,7 +497,8 @@
   function renderPhotoTypes(section) {
     const container = document.getElementById('required-list');
     const keTypes = section.photoTypes.filter(pt => pt.isKE);
-    const regularTypes = section.photoTypes.filter(pt => !pt.isKE);
+    const snTypes = section.photoTypes.filter(pt => pt.isSN);
+    const regularTypes = section.photoTypes.filter(pt => !pt.isKE && !pt.isSN);
 
     let html = '<div class="photo-types-group"><h4>Фото</h4>';
     regularTypes.forEach(pt => {
@@ -511,22 +520,45 @@
     });
     html += '</div>';
 
-    if (keTypes.length > 0) {
-      html += '<div class="photo-types-group ke-group"><h4>КЕ (инвентарные номера)</h4>';
+    if (keTypes.length > 0 || snTypes.length > 0) {
+      html += '<div class="photo-types-group ke-group ke-sn-split">';
+      html += '<div class="ke-sn-header"><span>КЕ (инвентарные номера)</span><span>Серийные номера</span></div>';
+      html += '<div class="ke-sn-container">';
+      html += '<div class="ke-sn-column ke-column">';
+
       keTypes.forEach(pt => {
         const hasPhoto = section.photos.some(p => p.typeId === pt.id);
         const isSelected = selectedPhotoType === pt.id && !hasPhoto;
+        const btnClass = 'ke-type' + (hasPhoto ? ' done' : '') + (isSelected ? ' selected' : '');
         html += `
-          <div class="photo-type-item ke-type ${hasPhoto ? 'done' : ''} ${isSelected ? 'selected' : ''}" data-type-id="${pt.id}">
+          <div class="photo-type-item ${btnClass}" data-type-id="${pt.id}">
             <div class="photo-type-check">${hasPhoto ?
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>' :
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>'}</div>
             <div class="photo-type-name">${pt.filename}</div>
-            <div class="photo-type-tap-hint">${hasPhoto ? '✓' : isSelected ? 'Нажмите' : 'Нажмите'}</div>
+            ${hasPhoto ? '<div class="photo-type-tap-hint">✓</div>' : ''}
           </div>
         `;
       });
-      html += '</div>';
+
+      html += '</div><div class="ke-sn-column sn-column">';
+
+      snTypes.forEach(pt => {
+        const hasPhoto = section.photos.some(p => p.typeId === pt.id);
+        const isSelected = selectedPhotoType === pt.id && !hasPhoto;
+        const btnClass = 'sn-type' + (hasPhoto ? ' done' : '') + (isSelected ? ' selected' : '');
+        html += `
+          <div class="photo-type-item ${btnClass}" data-type-id="${pt.id}">
+            <div class="photo-type-check">${hasPhoto ?
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>' :
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>'}</div>
+            <div class="photo-type-name">${pt.filename}</div>
+            ${hasPhoto ? '<div class="photo-type-tap-hint">✓</div>' : ''}
+          </div>
+        `;
+      });
+
+      html += '</div></div></div>';
     }
 
     container.innerHTML = html;
@@ -545,7 +577,11 @@
         container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
         item.classList.add('selected');
         
-        document.getElementById('camera-input').click();
+        if (pt?.isKE || pt?.isSN) {
+          openKEScanner();
+        } else {
+          document.getElementById('camera-input').click();
+        }
       });
     });
 
@@ -646,9 +682,9 @@
   function saveCurrentSection() {
     const section = currentReport.sections[currentSectionIndex];
     const missing = section.photoTypes.filter(pt => {
+      if (pt.isKE || pt.isSN) return false;
       const count = section.photos.filter(p => p.typeId === pt.id).length;
-      const required = 1;
-      return count < required;
+      return count < 1;
     });
 
     if (missing.length > 0) {
@@ -663,17 +699,27 @@
     showToast('Секция сохранена');
   }
 
+  function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent);
+  }
+
   async function openKEScanner() {
-    showPage('ke');
+    const isIos = isIOS();
+    
+    if (isIos) {
+      openKEModal();
+      return;
+    }
+
     const section = currentReport.sections[currentSectionIndex];
 
     try {
       stopScanner();
       const video = document.getElementById('ke-video');
-      const frame = document.getElementById('ke-frame');
-      const codeText = document.getElementById('ke-code-text');
-      const detectedBox = document.getElementById('ke-detected-code');
-      const scanLine = document.getElementById('ke-scan-line');
+      if (!video) {
+        showToast('Сканер не инициализирован');
+        return;
+      }
 
       videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       video.srcObject = videoStream;
@@ -733,6 +779,126 @@
         showToast('Камера недоступна: ' + err.message);
       }
     }
+  }
+
+  async function openKEModal() {
+    const modal = document.getElementById('ke-camera-modal');
+    const video = document.getElementById('ke-cam-video');
+    const frame = document.getElementById('ke-cam-frame');
+    const status = document.getElementById('ke-cam-status');
+    
+    modal.classList.remove('hidden');
+    if (status) status.textContent = 'Наведите на штрих-код или сделайте фото';
+    if (frame) frame.classList.remove('detected');
+    
+    try {
+      if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+      if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); }
+      
+      videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      video.srcObject = videoStream;
+      lastScannedCode = null;
+      scanCooldown = false;
+      
+      if ('BarcodeDetector' in window) {
+        const det = new BarcodeDetector({
+          formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417']
+        });
+        scanTimer = setInterval(async () => {
+          if (scanCooldown || video.readyState < 2) return;
+          try {
+            const codes = await det.detect(video);
+            if (codes.length) onKEModalScanDetected(codes[0].rawValue);
+          } catch(e) {}
+        }, 300);
+      }
+    } catch (err) {
+      if (err.name === 'NotAllowedError') {
+        showToast('Разрешите доступ к камере в браузере');
+      } else {
+        showToast('Камера недоступна: ' + err.message);
+      }
+      closeKEModal();
+    }
+  }
+
+  function onKEModalScanDetected(code) {
+    if (scanCooldown) return;
+    const clean = code.replace(/[^0-9]/g, '');
+    if (clean.length !== 13 && clean.length !== 4) {
+      return;
+    }
+    if (lastScannedCode === code) return;
+    lastScannedCode = code;
+
+    scanCooldown = true;
+    setTimeout(() => { scanCooldown = false; lastScannedCode = null; }, 2000);
+
+    if (navigator.vibrate) navigator.vibrate(60);
+    beepFeedback();
+
+    const frame = document.getElementById('ke-cam-frame');
+    const status = document.getElementById('ke-cam-status');
+    if (frame) frame.classList.add('detected');
+    if (status) status.textContent = '✓ ' + code;
+
+    showToast('✓ ' + code);
+    
+    const section = currentReport.sections[currentSectionIndex];
+    const pt = section.photoTypes.find(t => t.id === selectedPhotoType);
+    section.photos.push({
+      id: generateId(),
+      typeId: selectedPhotoType,
+      dataUrl: '',
+      timestamp: new Date().toISOString()
+    });
+    
+    addKECode(code);
+    saveReport();
+    renderSectionPhotos(section);
+    renderPhotoTypes(section);
+    closeKEModal();
+  }
+
+  function closeKEModal() {
+    const modal = document.getElementById('ke-camera-modal');
+    const video = document.getElementById('ke-cam-video');
+    
+    modal.classList.add('hidden');
+    
+    if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+    if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
+    if (video && video.srcObject) { video.srcObject = null; }
+  }
+
+  function keCamCapture() {
+    const video = document.getElementById('ke-cam-video');
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    
+    const section = currentReport.sections[currentSectionIndex];
+    section.photos.push({
+      id: generateId(),
+      typeId: selectedPhotoType,
+      dataUrl: dataUrl,
+      timestamp: new Date().toISOString()
+    });
+    
+    const frame = document.getElementById('ke-cam-frame');
+    if (frame) {
+      frame.classList.add('detected');
+      setTimeout(() => frame.classList.remove('detected'), 1000);
+    }
+    
+    showToast('Фото сохранено');
+    saveReport();
+    renderSectionPhotos(section);
+    renderPhotoTypes(section);
+    closeKEModal();
   }
 
   function onScanDetected(code) {
@@ -907,6 +1073,7 @@
     currentReport.sections.forEach(sec => {
       totalPhotos += sec.photos.length;
       sec.photoTypes.forEach(pt => {
+        if (pt.isKE || pt.isSN) return;
         totalTypes++;
         if (sec.photos.some(p => p.typeId === pt.id)) doneTypes++;
       });
@@ -941,7 +1108,7 @@
     const eqMap = {
       'kassa': 'Касса',
       'kassa_zona': 'Кассовая зона',
-      'kso': 'Касса самообслуживания',
+      'kso': 'КСО',
       'td': 'ТД',
       'tsd': 'ТСД',
       'uks': 'Универсальный кассовый стол (УКС)',
@@ -955,6 +1122,21 @@
       }
     }
 
+    let keDone = 0, keTotal = 0, snDone = 0, snTotal = 0;
+    for (const sec of (currentReport.sections || [])) {
+      for (const pt of sec.photoTypes) {
+        if (pt.isKE) {
+          keTotal++;
+          if (sec.photos.some(p => p.typeId === pt.id)) keDone++;
+        } else if (pt.isSN) {
+          snTotal++;
+          if (sec.photos.some(p => p.typeId === pt.id)) snDone++;
+        }
+      }
+    }
+    ws_data.push([null]);
+    ws_data.push(['КЕ (инвентарные номера)', `${keDone} из ${keTotal}`]);
+    ws_data.push(['Серийные номера', `${snDone} из ${snTotal}`]);
     ws_data.push([null]);
     ws_data.push(['№', 'Блок', 'Наименование работ', 'Статус', 'Комментарий']);
 
@@ -1124,26 +1306,52 @@
         }
         if (pt.isKE) {
           zip.file(`КЕ/${filename}`, base64, { base64: true });
+        } else if (pt.isSN) {
+          zip.file(`Серийные номера/${filename}`, base64, { base64: true });
         } else {
           zip.file(`${itemNum}# ${filename}`, base64, { base64: true });
         }
       }
     }
 
-    const keCodes = currentReport.sections.reduce((acc, sec) => {
-      const kePhotos = sec.photos.filter(p => {
-        const pt = sec.photoTypes.find(t => t.id === p.typeId);
-        return pt && pt.isKE;
-      });
-      return acc + kePhotos.length;
-    }, 0);
+    let keDone = 0, keTotal = 0, snDone = 0, snTotal = 0;
+    for (const sec of currentReport.sections) {
+      for (const pt of sec.photoTypes) {
+        if (pt.isKE) {
+          keTotal++;
+          if (sec.photos.some(p => p.typeId === pt.id)) keDone++;
+        } else if (pt.isSN) {
+          snTotal++;
+          if (sec.photos.some(p => p.typeId === pt.id)) snDone++;
+        }
+      }
+    }
 
-    const lines = [`Фото Отчёт — ${currentReport.reportName}`, `Дата: ${currentReport.date}`, `Техник: ${currentReport.technician}`, '', `Всего фото: ${photoCount}`, `КЕ фото: ${keCodes}`, `КЕ кодов: ${currentReport.keCodes ? currentReport.keCodes.length : 0}`, ''];
+    const lines = [
+      `Фото Отчёт — ${currentReport.reportName}`,
+      `Дата: ${currentReport.date}`,
+      `Техник: ${currentReport.technician}`,
+      '',
+      `Всего фото: ${photoCount}`,
+      `КЕ: ${keDone} из ${keTotal}`,
+      `Серийные номера: ${snDone} из ${snTotal}`,
+      '',
+      'КЕ (инвентарные номера):'
+    ];
     if (currentReport.keCodes && currentReport.keCodes.length > 0) {
-      lines.push('КЕ коды:');
       currentReport.keCodes.forEach(code => lines.push(`  ${code}`));
     }
-    zip.file('КЕ.txt', lines.join('\n'));
+    lines.push('', 'Серийные номера:');
+    for (const sec of currentReport.sections) {
+      for (const photo of sec.photos) {
+        const pt = sec.photoTypes.find(t => t.id === photo.typeId);
+        if (pt && pt.isSN) {
+          const shortName = pt.filename.replace('СН ', '');
+          lines.push(`  КЕ Серийный ${shortName}`);
+        }
+      }
+    }
+    zip.file('Коды.txt', lines.join('\n'));
 
     return await zip.generateAsync({ type: 'blob' });
   }

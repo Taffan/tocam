@@ -18,7 +18,7 @@ const TYPE_CONFIGS = {
     separator: ' # ',
     equipment: [
       { id: 'kassa_zona', name: 'Кассовая зона', icon: 'kassa' },
-      { id: 'kso', name: 'Касса самообслуживания', icon: 'kso' },
+      { id: 'kso', name: 'КСО', icon: 'kso' },
       { id: 'td', name: 'ТД', icon: 'td' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
       { id: 'uks', name: 'УКС', icon: 'uks' },
@@ -59,6 +59,14 @@ const PHOTO_TYPES = {
       { id: 'ke_pin_pad', name: 'КЕ Пин Пад', filename: 'КЕ Пин Пад' },
       { id: 'ke_skaner', name: 'КЕ Сканер ШК', filename: 'КЕ Сканер ШК' },
       { id: 'ke_skaner_ruchnoy', name: 'КЕ Ручной Сканер ШК', filename: 'КЕ Ручной Сканер ШК' }
+    ],
+    sn: [
+      { id: 'sn_kkt', name: 'СН ККТ', filename: 'СН ККТ' },
+      { id: 'sn_ibp', name: 'СН ИБП', filename: 'СН ИБП' },
+      { id: 'sn_pk', name: 'СН ПК', filename: 'СН ПК' },
+      { id: 'sn_pin_pad', name: 'СН Пин Пад', filename: 'СН Пин Пад' },
+      { id: 'sn_skaner', name: 'СН Сканер ШК', filename: 'СН Сканер ШК' },
+      { id: 'sn_skaner_ruchnoy', name: 'СН Ручной Сканер ШК', filename: 'СН Ручной Сканер ШК' }
     ]
   },
   td: {
@@ -68,6 +76,9 @@ const PHOTO_TYPES = {
     ],
     ke: [
       { id: 'ke', name: 'Фото ТД КЕ', filename: 'Фото ТД КЕ' }
+    ],
+    sn: [
+      { id: 'sn', name: 'СН ТД', filename: 'СН ТД' }
     ]
   },
   tsd: {
@@ -76,6 +87,9 @@ const PHOTO_TYPES = {
     ],
     ke: [
       { id: 'ke', name: 'Фото ТСД КЕ', filename: 'Фото ТСД КЕ' }
+    ],
+    sn: [
+      { id: 'sn', name: 'СН ТСД', filename: 'СН ТСД' }
     ]
   },
   uks: {
@@ -105,6 +119,18 @@ const PHOTO_TYPES = {
       { id: 'ke_router_rezerv', name: 'Фото КЕ Роутер Резерв', filename: 'Фото КЕ Роутер Резерв' },
       { id: 'ke_printer', name: 'Фото КЕ Принтер', filename: 'Фото КЕ Принтер' },
       { id: 'ke_skaner_a4', name: 'Фото КЕ Сканер А4', filename: 'Фото КЕ Сканер А4' }
+    ],
+    sn: [
+      { id: 'sn_server_pk', name: 'СН Серверного ПК', filename: 'СН Серверного ПК' },
+      { id: 'sn_ibp_server', name: 'СН ИБП Сервер', filename: 'СН ИБП Сервер' },
+      { id: 'sn_pkd', name: 'СН ПКД', filename: 'СН ПКД' },
+      { id: 'sn_ibp_pkd', name: 'СН ИБП ПКД', filename: 'СН ИБП ПКД' },
+      { id: 'sn_monitor', name: 'СН Монитор', filename: 'СН Монитор' },
+      { id: 'sn_golosovoy', name: 'СН Голосовой шлюз', filename: 'СН Голосовой шлюз' },
+      { id: 'sn_router_master', name: 'СН Роутер Мастер', filename: 'СН Роутер Мастер' },
+      { id: 'sn_router_rezerv', name: 'СН Роутер Резерв', filename: 'СН Роутер Резерв' },
+      { id: 'sn_printer', name: 'СН Принтер', filename: 'СН Принтер' },
+      { id: 'sn_skaner_a4', name: 'СН Сканер А4', filename: 'СН Сканер А4' }
     ]
   },
   mp: {
@@ -113,6 +139,9 @@ const PHOTO_TYPES = {
     ],
     ke: [
       { id: 'ke', name: 'Фото Мобильный принтер КЕ', filename: 'Фото Мобильный принтер КЕ' }
+    ],
+    sn: [
+      { id: 'sn', name: 'СН Мобильный принтер', filename: 'СН Мобильный принтер' }
     ]
   },
   kassa_zona: {
@@ -134,6 +163,16 @@ const PHOTO_TYPES = {
       { id: 'ke_skaner_ruchnoy', name: 'Фото КЕ Ручной Сканер ШК', filename: 'Фото КЕ Ручной Сканер ШК' },
       { id: 'ke_vesi', name: 'Фото КЕ Весы прикассовые', filename: 'Фото КЕ Весы прикассовые' },
       { id: 'ke_monitor', name: 'Фото КЕ Монитор', filename: 'Фото КЕ Монитор' }
+    ],
+    sn: [
+      { id: 'sn_kkt', name: 'СН ККТ', filename: 'СН ККТ' },
+      { id: 'sn_ibp', name: 'СН ИБП', filename: 'СН ИБП' },
+      { id: 'sn_pk', name: 'СН ПК', filename: 'СН ПК' },
+      { id: 'sn_pin_pad', name: 'СН Пин Пад', filename: 'СН Пин Пад' },
+      { id: 'sn_skaner', name: 'СН Сканер ШК', filename: 'СН Сканер ШК' },
+      { id: 'sn_skaner_ruchnoy', name: 'СН Ручной Сканер ШК', filename: 'СН Ручной Сканер ШК' },
+      { id: 'sn_vesi', name: 'СН Весы прикассовые', filename: 'СН Весы прикассовые' },
+      { id: 'sn_monitor', name: 'СН Монитор', filename: 'СН Монитор' }
     ]
   },
   kso: {
@@ -151,6 +190,13 @@ const PHOTO_TYPES = {
       { id: 'ke_kso', name: 'Фото КЕ КСО', filename: 'Фото КЕ КСО' },
       { id: 'ke_tbo', name: 'Фото КЕ ТБО', filename: 'Фото КЕ ТБО' },
       { id: 'ke_vesi', name: 'Фото КЕ весы', filename: 'Фото КЕ весы' }
+    ],
+    sn: [
+      { id: 'sn_kkt', name: 'СН ККТ', filename: 'СН ККТ' },
+      { id: 'sn_ibp', name: 'СН ИБП', filename: 'СН ИБП' },
+      { id: 'sn_kso', name: 'СН КСО', filename: 'СН КСО' },
+      { id: 'sn_tbo', name: 'СН ТБО', filename: 'СН ТБО' },
+      { id: 'sn_vesi', name: 'СН весы', filename: 'СН весы' }
     ]
   },
   vesi: {
@@ -159,13 +205,16 @@ const PHOTO_TYPES = {
     ],
     ke: [
       { id: 'ke', name: 'Фото КЕ Весы напольные', filename: 'Фото КЕ Весы напольные' }
+    ],
+    sn: [
+      { id: 'sn', name: 'СН Весы напольные', filename: 'СН Весы напольные' }
     ]
   },
   prochee: {
     photo: [
-      { id: 'planograma', name: 'Планограмма', filename: 'Планограмма', multi: true },
-      { id: 'sluzhba_nut', name: 'Служба NUT', filename: 'Служба NUT', multi: true },
-      { id: 'raznie_sushnosti', name: 'Разные сущности', filename: 'Разные сущности', multi: true }
+      { id: 'planograma', name: 'Планограмма', filename: 'Планограмма', multi: true, maxPhotos: 10 },
+      { id: 'sluzhba_nut', name: 'Служба NUT', filename: 'Служба NUT', multi: true, maxPhotos: 10 },
+      { id: 'raznie_sushnosti', name: 'Прочее', filename: 'Прочее', multi: true, maxPhotos: 10 }
     ],
     ke: []
   }
@@ -176,8 +225,9 @@ function getPhotoTypes(typeId) {
   if (!types) return [];
   
   const all = [];
-  (types.photo || []).forEach(pt => all.push({ ...pt, isKE: false }));
-  (types.ke || []).forEach(kt => all.push({ ...kt, isKE: true }));
+  (types.photo || []).forEach(pt => all.push({ ...pt, isKE: false, isSN: false }));
+  (types.ke || []).forEach(kt => all.push({ ...kt, isKE: true, isSN: false }));
+  (types.sn || []).forEach(sn => all.push({ ...sn, isKE: false, isSN: true }));
   
   return all;
 }
