@@ -143,11 +143,6 @@
       saveReport();
       showChecklist();
     });
-    document.getElementById('back-from-ke').addEventListener('click', () => {
-      stopScanner();
-      showPhotoSection();
-    });
-
     document.getElementById('report-form').addEventListener('submit', handleFormSubmit);
     document.getElementById('btn-finish-report').addEventListener('click', () => {
       finishReport();
@@ -156,29 +151,6 @@
 
     document.getElementById('camera-input').addEventListener('change', handleCameraCapture);
     document.getElementById('gallery-input').addEventListener('change', handleGallerySelect);
-
-    document.getElementById('btn-save-ke').addEventListener('click', () => {
-      stopScanner();
-      showChecklist();
-    });
-    document.getElementById('btn-ke-add-manual').addEventListener('click', () => {
-      const input = document.getElementById('ke-manual-input');
-      const code = input.value.trim();
-      if (code) {
-        addKECode(code);
-        input.value = '';
-        input.focus();
-      }
-    });
-    document.getElementById('ke-manual-input').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        const code = e.target.value.trim();
-        if (code) {
-          addKECode(code);
-          e.target.value = '';
-        }
-      }
-    });
 
     document.getElementById('btn-send-report').addEventListener('click', sendReport);
     document.getElementById('btn-delete-report').addEventListener('click', deleteReport);
