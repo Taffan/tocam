@@ -1135,9 +1135,7 @@
       const blob = cachedBlob || await buildZipBlob();
       const filename = cachedFilename || `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
 
-      const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-      if (isMobile && navigator.share) {
+      if (navigator.share) {
         const file = new File([blob], filename, { type: 'application/zip' });
         try {
           const sharePromise = navigator.share({
@@ -1145,8 +1143,20 @@
             text: `${currentReport.reportName} | ${currentReport.technician} | ${currentReport.date}`,
             files: [file]
           });
-          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000));
+          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000));
           await Promise.race([sharePromise, timeout]);
+          return;
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+        }
+
+        try {
+          await navigator.share({
+            title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
+            text: `${currentReport.reportName} | ${currentReport.technician} | ${currentReport.date}`
+          });
+          showToast(`Архив "${filename}" сохранён — приложите к сообщению`);
+          downloadBlob(blob, filename);
           return;
         } catch (err) {
           if (err && err.name === 'AbortError') return;
