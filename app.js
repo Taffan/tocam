@@ -82,23 +82,21 @@
     if (isStandalone) return;
 
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const installCard = document.getElementById('install-card');
 
     if (isIOS) {
-      installCard.classList.add('visible');
-      document.getElementById('btn-install-home').textContent = 'Как установить';
-      document.getElementById('btn-install-home').onclick = () => {
-        document.getElementById('ios-install').classList.remove('hidden');
-      };
       document.getElementById('btn-close-ios').addEventListener('click', () => {
         document.getElementById('ios-install').classList.add('hidden');
         localStorage.setItem('iosInstallShown', 'true');
       });
+      if (!localStorage.getItem('iosInstallShown')) {
+        setTimeout(() => {
+          document.getElementById('ios-install').classList.remove('hidden');
+        }, 2000);
+      }
     } else {
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        installCard.classList.add('visible');
         if (!localStorage.getItem('installPromptShown')) {
           setTimeout(() => {
             document.getElementById('install-prompt').classList.remove('hidden');
@@ -107,7 +105,6 @@
       });
 
       window.addEventListener('appinstalled', () => {
-        installCard.classList.remove('visible');
         document.getElementById('install-prompt').classList.add('hidden');
       });
 
@@ -141,8 +138,8 @@
       if (deferredPrompt) {
         await deferredPrompt.prompt();
         deferredPrompt = null;
-        document.getElementById('install-card')?.classList.remove('visible');
         localStorage.setItem('installPromptShown', 'true');
+        document.getElementById('install-prompt')?.classList.add('hidden');
       } else {
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
         if (isIOS) {
@@ -187,15 +184,6 @@
 
     document.getElementById('ke-cam-capture').addEventListener('click', captureKEPhoto);
     document.getElementById('ke-cam-close').addEventListener('click', closeKECamera);
-
-    document.getElementById('btn-install-home').addEventListener('click', async () => {
-      if (deferredPrompt) {
-        await deferredPrompt.prompt();
-        deferredPrompt = null;
-        document.getElementById('install-card').classList.remove('visible');
-        localStorage.setItem('installPromptShown', 'true');
-      }
-    });
 
     document.getElementById('btn-save-archive').addEventListener('click', saveArchive);
     document.getElementById('btn-send-report').addEventListener('click', sendReport);
@@ -1025,8 +1013,19 @@
     const msg = `Фотоотчёт: ${reportName}\nТехник: ${technician}\nДата: ${date}\nСекций: ${currentReport.sections.length}\nФото: ${totalPhotos}`;
 
     if (navigator.share) {
+      const blob = await buildZipBlob();
+      const file = new File([blob], savedArchiveFilename || 'report.zip', { type: 'application/zip' });
+      try {
+        const sharePromise = navigator.share({ title: `Фотоотчёт: ${reportName}`, text: msg, files: [file] });
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000));
+        await Promise.race([sharePromise, timeout]);
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+      }
       try {
         await navigator.share({ title: `Фотоотчёт: ${reportName}`, text: msg });
+        showToast('Архив в Загрузках — приложите к сообщению');
         return;
       } catch (err) {
         if (err && err.name === 'AbortError') return;
