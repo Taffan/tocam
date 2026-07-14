@@ -776,7 +776,7 @@
           formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417']
         });
         scanTimer = setInterval(async () => {
-          if (scanCooldown || video.readyState < 2) return;
+          if (scanCooldown || video.readyState < 2 || !video.videoWidth) return;
           try {
             const codes = await det.detect(video);
             if (pendingScanCode) {
@@ -803,7 +803,7 @@
         const ctx = window._zxingCv.getContext('2d');
 
         scanTimer = setInterval(() => {
-          if (scanCooldown || video.readyState < 2) return;
+          if (scanCooldown || video.readyState < 2 || !video.videoWidth) return;
           try {
             window._zxingCv.width = video.videoWidth;
             window._zxingCv.height = video.videoHeight;
