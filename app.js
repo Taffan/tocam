@@ -1136,15 +1136,23 @@
       const filename = cachedFilename || `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
 
       const file = new File([blob], filename, { type: 'application/zip' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({
-          title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
-          files: [file]
-        }).catch(() => downloadBlob(blob, filename));
-      } else {
-        downloadBlob(blob, filename);
-        showToast('Архив скачан');
+      const shareData = {
+        title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
+        text: `${currentReport.reportName} | ${currentReport.technician} | ${currentReport.date}`,
+        files: [file]
+      };
+
+      if (navigator.canShare && navigator.canShare(shareData)) {
+        try {
+          await navigator.share(shareData);
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+        }
+        return;
       }
+
+      downloadBlob(blob, filename);
+      showToast('Архив скачан');
     } catch (e) {
       showToast('Ошибка: ' + e.message);
     }
