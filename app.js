@@ -564,41 +564,41 @@
       html += '<div class="photo-types-group ke-group ke-sn-split">';
       html += '<div class="ke-sn-header"><span>КЕ (инвентарные номера)</span><span>Серийные номера</span></div>';
       html += '<div class="ke-sn-container">';
-      html += '<div class="ke-sn-column ke-column">';
 
-      keTypes.forEach(pt => {
+      function renderKECell(pt) {
         const hasPhoto = section.photos.some(p => p.typeId === pt.id);
         const isSelected = selectedPhotoType === pt.id && !hasPhoto;
         const btnClass = 'ke-type' + (hasPhoto ? ' done' : '') + (isSelected ? ' selected' : '');
-        html += `
-          <div class="photo-type-item ${btnClass}" data-type-id="${pt.id}">
+        return `<div class="photo-type-item ${btnClass}" data-type-id="${pt.id}">
             <div class="photo-type-check">${hasPhoto ?
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>' :
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>'}</div>
             <div class="photo-type-name">${pt.filename}</div>
             ${hasPhoto ? '<div class="photo-type-tap-hint">✓</div>' : ''}
-          </div>
-        `;
-      });
-
-      html += '</div><div class="ke-sn-column sn-column">';
-
-      snTypes.forEach(pt => {
+          </div>`;
+      }
+      function renderSNCell(pt) {
         const hasPhoto = section.photos.some(p => p.typeId === pt.id);
         const isSelected = selectedPhotoType === pt.id && !hasPhoto;
         const btnClass = 'sn-type' + (hasPhoto ? ' done' : '') + (isSelected ? ' selected' : '');
-        html += `
-          <div class="photo-type-item ${btnClass}" data-type-id="${pt.id}">
+        return `<div class="photo-type-item ${btnClass}" data-type-id="${pt.id}">
             <div class="photo-type-check">${hasPhoto ?
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>' :
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>'}</div>
             <div class="photo-type-name">${pt.filename}</div>
             ${hasPhoto ? '<div class="photo-type-tap-hint">✓</div>' : ''}
-          </div>
-        `;
-      });
+          </div>`;
+      }
 
-      html += '</div></div></div>';
+      const maxPairs = Math.max(keTypes.length, snTypes.length);
+      for (let i = 0; i < maxPairs; i++) {
+        html += '<div class="ke-pair">';
+        html += '<div class="ke-sn-column">' + (i < keTypes.length ? renderKECell(keTypes[i]) : '<div class="ke-pair-spacer"></div>') + '</div>';
+        html += '<div class="ke-sn-column">' + (i < snTypes.length ? renderSNCell(snTypes[i]) : '<div class="ke-pair-spacer"></div>') + '</div>';
+        html += '</div>';
+      }
+
+      html += '</div></div>';
     }
 
     container.innerHTML = html;
@@ -756,6 +756,7 @@
     const confirmBar = document.getElementById('ke-cam-confirm');
 
     pendingScanCode = null;
+    cachedOverlayCodes = '';
     modal.classList.remove('hidden');
     if (overlays) overlays.innerHTML = '';
     if (confirmBar) confirmBar.classList.add('hidden');
@@ -834,29 +835,45 @@
     }
   }
 
+  let cachedOverlayCodes = '';
+
+  function isKECode(code) {
+    const clean = code.replace(/[^0-9]/g, '');
+    return clean.length === 13 || clean.length === 4;
+  }
+
   function showBarcodeOverlays(codes, vw, vh) {
     if (pendingScanCode) return;
     const confirmBar = document.getElementById('ke-cam-confirm');
     if (confirmBar && !confirmBar.classList.contains('hidden')) return;
     const container = document.getElementById('ke-cam-overlays');
     if (!container) return;
+    const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
+    const isSN = pt?.isSN;
+    const detected = codes.filter(c => {
+      if (!c.rawValue || !c.rawValue.trim() || !c.boundingBox) return false;
+      if (isSN) return true;
+      return isKECode(c.rawValue);
+    });
+    const codeSet = detected.map(c => c.rawValue).sort().join('|');
+    if (!detected.length) {
+      if (cachedOverlayCodes !== '') { container.innerHTML = ''; cachedOverlayCodes = ''; }
+      return;
+    }
+    if (codeSet === cachedOverlayCodes) return;
+    cachedOverlayCodes = codeSet;
     const wrap = container.parentElement;
     const cw = wrap.clientWidth;
     const ch = wrap.clientHeight;
     const scaleX = cw / vw;
     const scaleY = ch / vh;
-    const detected = codes.filter(c => {
-      const clean = c.rawValue.replace(/[^0-9]/g, '');
-      return clean.length === 13 || clean.length === 4;
-    });
-    if (!detected.length) { container.innerHTML = ''; return; }
     let html = '';
     detected.forEach((c, i) => {
       const bx = c.boundingBox;
-      const left = (bx.x * scaleX);
-      const top = (bx.y * scaleY);
-      const w = bx.width * scaleX;
-      const h = bx.height * scaleY;
+      const left = Math.max(0, bx.x * scaleX);
+      const top = Math.max(0, bx.y * scaleY);
+      const w = Math.min(cw - left, bx.width * scaleX);
+      const h = Math.min(ch - top, bx.height * scaleY);
       html += `<div class="ke-cam-overlay-box" data-code="${c.rawValue}" style="left:${left}px;top:${top}px;width:${w}px;height:${h}px"><span class="ke-cam-overlay-label">${i+1}: ${c.rawValue}</span></div>`;
     });
     container.innerHTML = html;
@@ -869,8 +886,9 @@
   }
 
   function selectBarcodeCode(code) {
-    const clean = code.replace(/[^0-9]/g, '');
-    if (clean.length !== 13 && clean.length !== 4) return;
+    if (!code || !code.trim()) return;
+    const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
+    if (!pt?.isSN && !isKECode(code)) return;
     const confirmBar = document.getElementById('ke-cam-confirm');
     const confirmText = document.getElementById('ke-cam-confirm-text');
     const frame = document.getElementById('ke-cam-frame');
@@ -878,7 +896,6 @@
     document.querySelectorAll('.ke-cam-overlay-box').forEach(el => {
       el.classList.toggle('selected', el.dataset.code === code);
     });
-    const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
     const label = pt?.isSN ? 'СН' : 'КЕ';
     confirmText.textContent = `${label}: ${code} — подтвердите`;
     confirmBar.classList.remove('hidden');
@@ -910,14 +927,14 @@
   }
 
   function onScanCodeFound(code) {
+    if (!code || !code.trim()) return;
     const isNewCode = !pendingScanCode || pendingScanCode !== code;
     if (isNewCode && scanCooldown) return;
-    const clean = code.replace(/[^0-9]/g, '');
-    if (clean.length !== 13 && clean.length !== 4) return;
+    const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
+    if (!pt?.isSN && !isKECode(code)) return;
     const frame = document.getElementById('ke-cam-frame');
     const status = document.getElementById('ke-cam-status');
     if (frame) frame.classList.add('detected');
-    const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
     const label = pt?.isSN ? 'СН' : 'КЕ';
     if (status) { status.textContent = `✓ ${label}: ${code}`; status.className = 'ke-cam-status found'; }
     pendingScanCode = code;

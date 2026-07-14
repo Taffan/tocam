@@ -66,14 +66,14 @@ Photos (required)
 ├── ...
 
 KE (inventory numbers) | Serial numbers
-├── (KE left column, SN right column) — optional
+├── (paired rows, equal-height buttons) — optional
 ```
 
 | [EN] | [RU] | Required | Scanner |
 |-------|-------|---------|---------|
 | Photos | Фото | ✅ | — |
-| KE (inventory) | КЕ (инвентарные) | ❌ | Barcode |
-| SN (serial) | СН (серийные) | ❌ | Barcode |
+| KE (inventory) | КЕ (инвентарные) | ❌ | Barcode (13/4 digits) |
+| SN (serial) | СН (серийные) | ❌ | Barcode (any) |
 
 ---
 
@@ -124,18 +124,22 @@ Serial numbers:
 
 | Platform | Status |
 |----------|--------|
-| **iOS** | ✅ AirDrop, WhatsApp, Telegram |
+| **iOS (15+)** | ✅ AirDrop, WhatsApp, Telegram |
 | **Android** | ⚠️ Save → send manually |
-| **PC** | ✅ Send / Save |
+| **PC** | ⚠️ Save to Downloads (share unsupported) |
 
 ---
 
 ## Barcode Scanner / Сканер
 
-- BarcodeDetector API (Android Chrome 83+) — offline
-- ZXing fallback
+- BarcodeDetector API (Android Chrome 83+, iOS Safari 16.4+) — offline
+- ZXing fallback (iOS < 16.4, старые Android)
+- Interactive selection: yellow boxes → tap to select → green/red tracking
+- Confirmed code tracking: green frame (found), red frame (lost)
+- **KE mode:** 13-digit EAN-13 or 4-digit codes only (digits)
+- **SN mode:** any barcode or QR code accepted
+- Flicker-free overlays (cached code set, no DOM rebuild on unchanged frames)
 - Sound + vibration
-- EAN-13, 4 digits
 
 ---
 
