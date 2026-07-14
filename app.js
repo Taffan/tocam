@@ -994,7 +994,7 @@
     });
   }
 
-  async function sendReport() {
+  function sendReport() {
     if (!cachedZipBlob) {
       showToast('Архив ещё создаётся, повторите');
       return;
@@ -1002,12 +1002,23 @@
     const reportName = currentReport.reportName || 'Отчёт';
     const filename = `${(currentReport.objectType || '').toUpperCase()}_${reportName}_${(currentReport.date || '').replace(/-/g, '.')}.zip`;
     const file = new File([cachedZipBlob], filename, { type: 'application/zip' });
-    try {
-      await navigator.share({ title: `Фотоотчёт: ${reportName}`, files: [file] });
-    } catch (err) {
+    navigator.share({ title: `Фотоотчёт: ${reportName}`, text: `Фотоотчёт: ${reportName}`, files: [file] }).catch(err => {
       if (err && err.name === 'AbortError') return;
-      showToast('Ошибка: ' + err.message);
-    }
+      downloadBlob(cachedZipBlob, filename);
+      showToast('Архив сохранён в Загрузки');
+    });
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1000);
   }
 
   function deleteReport() {
