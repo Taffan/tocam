@@ -185,9 +185,11 @@
     document.getElementById('ke-cam-capture').addEventListener('click', captureKEPhoto);
     document.getElementById('ke-cam-close').addEventListener('click', closeKECamera);
 
-    document.getElementById('btn-save-archive').addEventListener('click', saveArchive);
     document.getElementById('btn-send-report').addEventListener('click', sendReport);
+    document.getElementById('btn-delete-report').addEventListener('click', deleteReport);
     document.getElementById('btn-new-from-complete').addEventListener('click', () => {
+      reportDiscarded = true;
+      cachedZipBlob = null;
       currentReport = null;
       showPage('home');
     });
@@ -948,6 +950,7 @@
     currentReport.completedAt = new Date().toISOString();
     saveReport();
     showComplete();
+    preBuildArchive();
   }
 
   function showComplete() {
@@ -969,59 +972,53 @@
       <div class="stat"><div class="stat-value">${Math.round((doneTypes/totalTypes)*100)}%</div><div class="stat-label">Готово</div></div>
     `;
 
-    document.getElementById('step-archive-status').textContent = 'Нажмите для сохранения';
-    document.getElementById('step-send-status').textContent = 'Архив ещё не сохранён';
-    document.getElementById('btn-send-report').disabled = true;
     document.getElementById('archive-loading').classList.add('hidden');
-    document.getElementById('btn-save-archive').classList.remove('hidden');
   }
 
-  let savedArchiveFilename = '';
   let cachedZipBlob = null;
+  let reportDiscarded = false;
 
-  async function saveArchive() {
-    const btn = document.getElementById('btn-save-archive');
-    const loading = document.getElementById('archive-loading');
-    const status = document.getElementById('step-archive-status');
-    btn.classList.add('hidden');
-    loading.classList.remove('hidden');
-    document.getElementById('archive-loading-text').textContent = 'Создание архива...';
-    try {
-      const blob = await buildZipBlob();
+  function preBuildArchive() {
+    const btn = document.getElementById('btn-send-report');
+    btn.disabled = true;
+    btn.innerHTML = 'Создание архива...';
+    buildZipBlob().then(blob => {
+      if (reportDiscarded) return;
       cachedZipBlob = blob;
-      const typeCode = (currentReport.objectType || '').toUpperCase();
-      const dateStr = (currentReport.date || '').replace(/-/g, '.');
-      savedArchiveFilename = `${typeCode}_${currentReport.reportName || 'report'}_${dateStr}.zip`;
-      downloadBlob(blob, savedArchiveFilename);
-      loading.classList.add('hidden');
-      btn.classList.remove('hidden');
-      btn.textContent = '✓ Архив сохранён';
-      btn.disabled = true;
-      status.textContent = `✓ ${savedArchiveFilename}`;
-      document.getElementById('step-send-status').textContent = 'Готов к отправке';
-      document.getElementById('btn-send-report').disabled = false;
-      showToast('Архив сохранён в Загрузки');
-    } catch (e) {
-      loading.classList.add('hidden');
-      btn.classList.remove('hidden');
-      showToast('Ошибка: ' + e.message);
-    }
+      btn.disabled = false;
+      btn.innerHTML = `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Отправить отчёт`;
+    }).catch(() => {
+      if (reportDiscarded) return;
+      btn.disabled = false;
+      btn.textContent = 'Отправить отчёт';
+    });
   }
 
   async function sendReport() {
+    if (!cachedZipBlob) {
+      showToast('Архив ещё создаётся, повторите');
+      return;
+    }
     const reportName = currentReport.reportName || 'Отчёт';
+    const filename = `${(currentReport.objectType || '').toUpperCase()}_${reportName}_${(currentReport.date || '').replace(/-/g, '.')}.zip`;
+    const file = new File([cachedZipBlob], filename, { type: 'application/zip' });
     try {
-      if (!cachedZipBlob) {
-        const blob = await buildZipBlob();
-        cachedZipBlob = blob;
-      }
-      const filename = savedArchiveFilename || `${(currentReport.objectType || '').toUpperCase()}_${reportName}_${(currentReport.date || '').replace(/-/g, '.')}.zip`;
-      const file = new File([cachedZipBlob], filename, { type: 'application/zip' });
       await navigator.share({ title: `Фотоотчёт: ${reportName}`, files: [file] });
     } catch (err) {
       if (err && err.name === 'AbortError') return;
       showToast('Ошибка: ' + err.message);
     }
+  }
+
+  function deleteReport() {
+    reportDiscarded = true;
+    if (currentReport && currentReport.id) {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).delete(currentReport.id);
+    }
+    cachedZipBlob = null;
+    currentReport = null;
+    showPage('home');
   }
 
   function getXlsxFilename() {
@@ -1133,18 +1130,6 @@
       },
       photos: photos
     };
-  }
-
-  function downloadBlob(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 1000);
   }
 
   async function buildZipBlob() {

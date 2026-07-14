@@ -249,6 +249,16 @@ body {
   cursor: not-allowed;
 }
 
+.btn-danger {
+  background: transparent;
+  border: 2px solid #DC0000;
+  color: #DC0000;
+}
+
+.btn-danger:active {
+  background: #FFEBEE;
+}
+
 .btn-success {
   background: var(--success);
   color: white;
@@ -1035,58 +1045,18 @@ body {
   margin-top: 4px;
 }
 
-.complete-steps {
+.complete-actions {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin: 24px 0;
 }
 
-.step {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  background: var(--surface);
-  border-radius: var(--radius-md);
-  padding: 16px;
+.archive-loading {
+  padding: 12px 0;
 }
 
-.step-number {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--primary);
-  color: white;
-  font-size: 14px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.step-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.step-title {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.step-status {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 10px;
-}
-
-.step-loading {
-  padding: 8px 0;
-}
-
-.step .btn {
+.complete-actions .btn-text {
   margin-top: 0;
 }
 
