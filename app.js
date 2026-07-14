@@ -120,6 +120,28 @@
 
   function setupEventListeners() {
     document.getElementById('header-back').addEventListener('click', goBack);
+    document.getElementById('header-menu').addEventListener('click', (e) => {
+      document.getElementById('menu-dropdown').classList.toggle('hidden');
+    });
+    document.getElementById('menu-backdrop').addEventListener('click', () => {
+      document.getElementById('menu-dropdown').classList.add('hidden');
+    });
+    document.getElementById('menu-install').addEventListener('click', async () => {
+      document.getElementById('menu-dropdown').classList.add('hidden');
+      if (deferredPrompt) {
+        await deferredPrompt.prompt();
+        deferredPrompt = null;
+        localStorage.setItem('installPromptShown', 'true');
+        document.getElementById('install-prompt')?.classList.add('hidden');
+      } else {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (isIOS) {
+          document.getElementById('ios-install')?.classList.remove('hidden');
+        } else {
+          showToast('Приложение уже установлено или не поддерживается');
+        }
+      }
+    });
     document.getElementById('btn-new-report').addEventListener('click', () => { cachedZipBlob = null; showPage('config'); });
 
     document.querySelectorAll('.type-btn').forEach(btn => {
