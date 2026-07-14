@@ -1135,11 +1135,12 @@
       const blob = cachedBlob || await buildZipBlob();
       const filename = cachedFilename || `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
 
-      if (navigator.share) {
+      const file = new File([blob], filename, { type: 'application/zip' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
         navigator.share({
           title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
-          text: `${currentReport.reportName} | ${currentReport.technician}\n\nФайл отчёта: ${filename}`
-        }).catch(() => {});
+          files: [file]
+        }).catch(() => downloadBlob(blob, filename));
       } else {
         downloadBlob(blob, filename);
         showToast('Архив скачан');
