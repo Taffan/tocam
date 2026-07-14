@@ -1135,20 +1135,18 @@
       const blob = cachedBlob || await buildZipBlob();
       const filename = cachedFilename || `${currentReport.reportName || 'report'}_${currentReport.date || ''}.zip`;
 
-      const file = new File([blob], filename, { type: 'application/zip' });
-      const shareData = {
-        title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
-        text: `${currentReport.reportName} | ${currentReport.technician} | ${currentReport.date}`,
-        files: [file]
-      };
-
-      if (navigator.canShare && navigator.canShare(shareData)) {
+      if (navigator.share) {
+        const file = new File([blob], filename, { type: 'application/zip' });
         try {
-          await navigator.share(shareData);
+          await navigator.share({
+            title: `Фотоотчёт: ${currentReport.reportName || 'report'}`,
+            text: `${currentReport.reportName} | ${currentReport.technician} | ${currentReport.date}`,
+            files: [file]
+          });
+          return;
         } catch (err) {
           if (err && err.name === 'AbortError') return;
         }
-        return;
       }
 
       downloadBlob(blob, filename);
