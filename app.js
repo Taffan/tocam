@@ -1,22 +1,24 @@
 (function() {
   'use strict';
 
-  if (navigator.serviceWorker) {
-    navigator.serviceWorker.getRegistrations().then(regs => {
-      const hadRegs = regs.length > 0;
-      regs.forEach(reg => reg.unregister());
-      if (hadRegs && !sessionStorage.getItem('sw_killed')) {
-        sessionStorage.setItem('sw_killed', '1');
-        window.location.reload();
-        return;
-      }
-    });
-  }
-  if (window.caches) {
-    caches.keys().then(names => {
-      names.forEach(name => caches.delete(name));
-    });
-  }
+  try {
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        const hadRegs = regs.length > 0;
+        regs.forEach(reg => reg.unregister());
+        if (hadRegs && !sessionStorage.getItem('sw_killed')) {
+          sessionStorage.setItem('sw_killed', '1');
+          window.location.reload();
+          return;
+        }
+      }).catch(() => {});
+    }
+    if (window.caches) {
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name));
+      }).catch(() => {});
+    }
+  } catch(e) {}
 
   const DB_NAME = 'PhotoReportsDB_v6';
   const STORE_NAME = 'reports';
@@ -46,13 +48,24 @@
       setDefaultDate();
       setupInstallPrompt();
       showPage('home');
+    }).catch(() => {
+      db = createDummyDB();
+      loadDrafts();
+      setupEventListeners();
+      setDefaultDate();
+      showPage('home');
     });
   }
 
   function initDB() {
     return new Promise((resolve, reject) => {
+      if (!window.indexedDB) {
+        db = createDummyDB();
+        resolve(db);
+        return;
+      }
       const request = indexedDB.open(DB_NAME, 1);
-      request.onerror = () => reject(request.error);
+      request.onerror = () => { db = createDummyDB(); resolve(db); };
       request.onsuccess = () => { db = request.result; resolve(db); };
       request.onupgradeneeded = (e) => {
         const database = e.target.result;
@@ -61,6 +74,20 @@
         }
       };
     });
+  }
+
+  function createDummyDB() {
+    const storage = {};
+    return {
+      transaction: () => ({
+        objectStore: () => ({
+          getAll: () => ({ onsuccess: null, result: Object.values(storage) }),
+          get: (id) => ({ onsuccess: null, result: storage[id] }),
+          put: (item) => { storage[item.id] = item; },
+          delete: (id) => { delete storage[id]; }
+        })
+      })
+    };
   }
 
   function generateId() {
@@ -704,81 +731,7 @@
   }
 
   async function openKEScanner() {
-    const isIos = isIOS();
-    
-    if (isIos) {
-      openKEModal();
-      return;
-    }
-
-    const section = currentReport.sections[currentSectionIndex];
-
-    try {
-      stopScanner();
-      const video = document.getElementById('ke-video');
-      if (!video) {
-        showToast('Сканер не инициализирован');
-        return;
-      }
-
-      videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      video.srcObject = videoStream;
-      lastScannedCode = null;
-      scanCooldown = false;
-
-      if ('BarcodeDetector' in window) {
-        const det = new BarcodeDetector({
-          formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417']
-        });
-        scanTimer = setInterval(async () => {
-          if (scanCooldown || video.readyState < 2) return;
-          try {
-            const codes = await det.detect(video);
-            if (codes.length) onScanDetected(codes[0].rawValue);
-          } catch(e) {}
-        }, 300);
-      } else if (typeof ZXing !== 'undefined') {
-        const hints = new Map();
-        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-          ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
-          ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
-          ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.UPC_A,
-          ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.ITF
-        ]);
-        codeReader = new ZXing.MultiFormatReader();
-        codeReader.setHints(hints);
-
-        const cv = document.createElement('canvas');
-        cv.style.display = 'none';
-        cv.id = 'zxing-cv';
-        document.body.appendChild(cv);
-        const ctx = cv.getContext('2d');
-
-        scanTimer = setInterval(() => {
-          if (scanCooldown || video.readyState < 2) return;
-          try {
-            cv.width = video.videoWidth;
-            cv.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0);
-            const imgData = ctx.getImageData(0, 0, cv.width, cv.height);
-            const lum = new ZXing.RGBLuminanceSource(imgData.data, cv.width, cv.height);
-            const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
-            const result = codeReader.decode(bmp);
-            if (result) onScanDetected(result.getText());
-          } catch(e) {}
-        }, 400);
-      } else {
-        showToast('Сканер не поддерживается — используйте ручной ввод');
-      }
-
-      renderKEList();
-    } catch (err) {
-      if (err.name === 'NotAllowedError') {
-        showToast('Разрешите доступ к камере в браузере');
-      } else {
-        showToast('Камера недоступна: ' + err.message);
-      }
-    }
+    openKEModal();
   }
 
   async function openKEModal() {
@@ -786,20 +739,20 @@
     const video = document.getElementById('ke-cam-video');
     const frame = document.getElementById('ke-cam-frame');
     const status = document.getElementById('ke-cam-status');
-    
+
     modal.classList.remove('hidden');
     if (status) status.textContent = 'Наведите на штрих-код или сделайте фото';
     if (frame) frame.classList.remove('detected');
-    
+
     try {
       if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
       if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); }
-      
+
       videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       video.srcObject = videoStream;
       lastScannedCode = null;
       scanCooldown = false;
-      
+
       if ('BarcodeDetector' in window) {
         const det = new BarcodeDetector({
           formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417']
@@ -811,6 +764,37 @@
             if (codes.length) onKEModalScanDetected(codes[0].rawValue);
           } catch(e) {}
         }, 300);
+      } else if (typeof ZXing !== 'undefined') {
+        const hints = new Map();
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+          ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+          ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+          ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.UPC_A,
+          ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.ITF
+        ]);
+        const reader = new ZXing.MultiFormatReader();
+        reader.setHints(hints);
+        window._zxingReader = reader;
+        window._zxingCv = document.createElement('canvas');
+        window._zxingCv.style.display = 'none';
+        document.body.appendChild(window._zxingCv);
+        const ctx = window._zxingCv.getContext('2d');
+
+        scanTimer = setInterval(() => {
+          if (scanCooldown || video.readyState < 2) return;
+          try {
+            window._zxingCv.width = video.videoWidth;
+            window._zxingCv.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            const imgData = ctx.getImageData(0, 0, window._zxingCv.width, window._zxingCv.height);
+            const lum = new ZXing.RGBLuminanceSource(imgData.data, window._zxingCv.width, window._zxingCv.height);
+            const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+            const result = window._zxingReader.decode(bmp);
+            if (result) onKEModalScanDetected(result.getText());
+          } catch(e) {}
+        }, 400);
+      } else {
+        showToast('Сканер не поддерживается — используйте фото');
       }
     } catch (err) {
       if (err.name === 'NotAllowedError') {
@@ -863,12 +847,14 @@
   function closeKEModal() {
     const modal = document.getElementById('ke-camera-modal');
     const video = document.getElementById('ke-cam-video');
-    
+
     modal.classList.add('hidden');
-    
+
     if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
     if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
     if (video && video.srcObject) { video.srcObject = null; }
+    if (window._zxingCv) { window._zxingCv.remove(); window._zxingCv = null; }
+    if (window._zxingReader) { window._zxingReader.reset(); window._zxingReader = null; }
   }
 
   function keCamCapture() {
@@ -1054,8 +1040,8 @@
     if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
     if (codeReader) { codeReader.reset(); codeReader = null; }
     if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
-    const cv = document.getElementById('zxing-cv');
-    if (cv) cv.remove();
+    if (window._zxingCv) { window._zxingCv.remove(); window._zxingCv = null; }
+    if (window._zxingReader) { window._zxingReader.reset(); window._zxingReader = null; }
   }
 
   function finishReport() {
@@ -1363,7 +1349,14 @@
     setTimeout(() => toast.classList.remove('show'), 3000);
   }
 
-  document.getElementById('input-object-name').addEventListener('input', updateConfigButton);
+  function safeAddEvent(id, event, handler) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(event, handler);
+  }
+
+  safeAddEvent('input-object-name', 'input', updateConfigButton);
+  safeAddEvent('install-prompt', 'click', () => {});
+  safeAddEvent('ios-install', 'click', () => {});
 
   init();
 })();
