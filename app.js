@@ -220,9 +220,10 @@
       confirmBar.classList.add('hidden');
       if (overlays) overlays.innerHTML = '';
       const status = document.getElementById('ke-cam-status');
-      const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
-      const label = pt?.isSN ? 'СН' : 'КЕ';
-      if (status) status.textContent = `✓ ${label}: ${pendingScanCode} — нажмите Сделать фото`;
+      if (status) {
+        status.textContent = 'Отсканируйте выбранный ШК...';
+        status.className = 'ke-cam-status';
+      }
     });
     document.getElementById('ke-cam-video').addEventListener('click', keCamCapture);
   }
@@ -758,7 +759,7 @@
     modal.classList.remove('hidden');
     if (overlays) overlays.innerHTML = '';
     if (confirmBar) confirmBar.classList.add('hidden');
-    if (status) status.textContent = 'Наведите на штрих-код или сделайте фото';
+    if (status) { status.textContent = 'Наведите на штрих-код или сделайте фото'; status.className = 'ke-cam-status'; }
     if (frame) frame.classList.remove('detected');
 
     try {
@@ -778,7 +779,11 @@
           if (scanCooldown || video.readyState < 2) return;
           try {
             const codes = await det.detect(video);
-            showBarcodeOverlays(codes, video.videoWidth, video.videoHeight);
+            if (pendingScanCode) {
+              trackConfirmedCode(codes);
+            } else {
+              showBarcodeOverlays(codes, video.videoWidth, video.videoHeight);
+            }
           } catch(e) {}
         }, 300);
       } else if (typeof ZXing !== 'undefined') {
@@ -877,6 +882,27 @@
     setTimeout(() => { scanCooldown = false; }, 2000);
   }
 
+  function trackConfirmedCode(codes) {
+    const frame = document.getElementById('ke-cam-frame');
+    const status = document.getElementById('ke-cam-status');
+    const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
+    const label = pt?.isSN ? 'СН' : 'КЕ';
+    const found = codes.some(c => c.rawValue === pendingScanCode);
+    if (found) {
+      if (frame) frame.classList.add('detected');
+      if (status) {
+        status.textContent = `✓ ${label}: ${pendingScanCode} — нажмите Сделать фото`;
+        status.className = 'ke-cam-status found';
+      }
+    } else {
+      if (frame) frame.classList.remove('detected');
+      if (status) {
+        status.textContent = `⚠ ${label}: ${pendingScanCode} — наведите на выбранный ШК`;
+        status.className = 'ke-cam-status lost';
+      }
+    }
+  }
+
   function onScanCodeFound(code) {
     if (scanCooldown) return;
     const clean = code.replace(/[^0-9]/g, '');
@@ -886,7 +912,7 @@
     if (frame) frame.classList.add('detected');
     const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
     const label = pt?.isSN ? 'СН' : 'КЕ';
-    if (status) status.textContent = `✓ ${label}: ${code}`;
+    if (status) { status.textContent = `✓ ${label}: ${code}`; status.className = 'ke-cam-status found'; }
     pendingScanCode = code;
     if (navigator.vibrate) navigator.vibrate(60);
     beepFeedback();
@@ -899,9 +925,13 @@
     const video = document.getElementById('ke-cam-video');
     const overlays = document.getElementById('ke-cam-overlays');
     const confirmBar = document.getElementById('ke-cam-confirm');
+    const status = document.getElementById('ke-cam-status');
+    const frame = document.getElementById('ke-cam-frame');
     pendingScanCode = null;
     if (overlays) overlays.innerHTML = '';
     if (confirmBar) confirmBar.classList.add('hidden');
+    if (status) status.className = 'ke-cam-status';
+    if (frame) frame.classList.remove('detected');
     modal.classList.add('hidden');
 
     if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }

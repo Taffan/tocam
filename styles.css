@@ -1672,7 +1672,15 @@ body {
   text-align: center;
   font-size: 14px;
   font-family: monospace;
-  transition: background 0.2s ease;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.ke-cam-status.found {
+  background: rgba(52, 199, 89, 0.85);
+}
+
+.ke-cam-status.lost {
+  background: rgba(220, 0, 0, 0.85);
 }
 
 .ke-cam-actions {
