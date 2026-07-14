@@ -850,6 +850,69 @@ body {
   border-color: var(--success);
 }
 
+.photo-types-group.sn-group {
+  background: #FFF3E0;
+  border-color: #FF9800;
+}
+
+.photo-types-group.sn-group h4 {
+  color: #E65100;
+}
+
+.ke-sn-container {
+  display: flex;
+  gap: 8px;
+}
+
+.ke-sn-header {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.ke-sn-header span {
+  text-align: center;
+}
+
+.ke-sn-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ke-sn-column .photo-type-item {
+  width: 100%;
+  padding: 10px 12px;
+}
+
+.ke-sn-column .photo-type-name {
+  font-size: 13px;
+}
+
+.ke-sn-column .photo-type-check {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+}
+
+.photo-type-item.sn-type .photo-type-check {
+  background: #FF9800;
+  border-color: #FF9800;
+}
+
+.photo-type-item.sn-type:hover {
+  background: #FFF3E0;
+}
+
+.photo-type-item.sn-type.done .photo-type-check {
+  background: var(--success);
+  border-color: var(--success);
+}
+
 .photo-type-check svg {
   width: 20px;
   height: 20px;
@@ -1515,6 +1578,86 @@ body {
   0% { top: 8%; }
   50% { top: 92%; }
   100% { top: 8%; }
+}
+
+.ke-cam-overlays {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.ke-cam-overlay-box {
+  position: absolute;
+  border: 3px solid #FFD700;
+  border-radius: 6px;
+  cursor: pointer;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.ke-cam-overlay-box.selected {
+  border-color: var(--success);
+  background: rgba(52, 199, 89, 0.2);
+}
+
+.ke-cam-overlay-label {
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #FFD700;
+  color: #000;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: monospace;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.ke-cam-overlay-box.selected .ke-cam-overlay-label {
+  background: var(--success);
+  color: #fff;
+}
+
+.ke-cam-confirm {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  background: var(--success);
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 10;
+}
+
+.ke-cam-confirm.hidden {
+  display: none;
+}
+
+.ke-cam-confirm-text {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+#ke-cam-confirm-yes {
+  background: #fff;
+  color: var(--success);
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .ke-cam-status {
