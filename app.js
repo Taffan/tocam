@@ -29,6 +29,7 @@
   window.selectedPhotoType = null;
   let selectedPhotoType = null;
   let selectedType = null;
+  let galleryPreviewActive = false;
   let equipmentCounts = {};
   let codeReader = null;
   let videoStream = null;
@@ -155,6 +156,10 @@
     document.getElementById('menu-backdrop').addEventListener('click', () => {
       document.getElementById('menu-dropdown').classList.add('hidden');
     });
+    document.getElementById('menu-settings').addEventListener('click', () => {
+      document.getElementById('menu-dropdown').classList.add('hidden');
+      showPage('settings');
+    });
     document.getElementById('menu-install').addEventListener('click', async () => {
       document.getElementById('menu-dropdown').classList.add('hidden');
       if (deferredPrompt) {
@@ -172,6 +177,7 @@
       }
     });
     document.getElementById('btn-new-report').addEventListener('click', () => { cachedZipBlob = null; showPage('config'); });
+    document.getElementById('btn-help').addEventListener('click', () => showPage('help'));
 
     document.querySelectorAll('.type-btn').forEach(btn => {
       btn.addEventListener('click', () => selectType(btn.dataset.type));
@@ -204,7 +210,7 @@
     document.getElementById('gallery-input').addEventListener('change', handleGallerySelect);
 
     document.getElementById('btn-send-report').addEventListener('click', sendReport);
-    document.getElementById('btn-delete-report').addEventListener('click', deleteReport);
+    document.getElementById('btn-delete-report').addEventListener('click', deleteCurrentReport);
     document.getElementById('btn-new-from-complete').addEventListener('click', () => {
       reportDiscarded = true;
       cachedZipBlob = null;
@@ -252,6 +258,40 @@
 
     document.getElementById('gallery-ok').addEventListener('click', closeGallery);
     document.getElementById('gallery-close-btn').addEventListener('click', closeGallery);
+
+    // Settings
+    function loadSettings() {
+      const photoQuality = localStorage.getItem('photoQuality') || 'medium';
+      const scannerQuality = localStorage.getItem('scannerQuality') || 'medium';
+      const darkTheme = localStorage.getItem('darkTheme') === 'true';
+
+      document.querySelectorAll('input[name="photoQuality"]').forEach(r => {
+        r.checked = r.value === photoQuality;
+      });
+      document.querySelectorAll('input[name="scannerQuality"]').forEach(r => {
+        r.checked = r.value === scannerQuality;
+      });
+      document.getElementById('settings-dark-theme').checked = darkTheme;
+
+      document.documentElement.classList.toggle('dark', darkTheme);
+    }
+
+    function saveSetting(key, value) {
+      localStorage.setItem(key, value);
+    }
+
+    document.querySelectorAll('.settings-radio input').forEach(r => {
+      r.addEventListener('change', () => {
+        saveSetting(r.dataset.key, r.value);
+      });
+    });
+
+    document.getElementById('settings-dark-theme').addEventListener('change', (e) => {
+      saveSetting('darkTheme', e.target.checked);
+      document.documentElement.classList.toggle('dark', e.target.checked);
+    });
+
+    loadSettings();
   }
 
   function showPage(pageName) {
@@ -573,13 +613,14 @@
       const photoCount = section.photos.filter(p => p.typeId === pt.id).length;
       const isMulti = pt.multi === true;
       const maxPhotos = pt.maxPhotos || (isMulti ? 4 : 1);
+      const hasPhoto = photoCount > 0;
       const isComplete = photoCount >= maxPhotos;
       const isSelected = selectedPhotoType === pt.id && !isComplete;
       
       const hint = pt.hint || '';
       html += `
-        <div class="photo-type-item ${isComplete ? 'done' : ''} ${isSelected ? 'selected' : ''}" data-type-id="${pt.id}">
-          <div class="photo-type-check">${isComplete ?
+        <div class="photo-type-item ${hasPhoto ? 'done' : ''} ${isSelected ? 'selected' : ''}" data-type-id="${pt.id}">
+          <div class="photo-type-check">${hasPhoto ?
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>' :
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>'}</div>
           <div class="photo-type-content">
@@ -610,6 +651,9 @@
               <div class="photo-type-name">${pt.filename}</div>
             </div>
             ${hasPhoto ? '<div class="photo-type-tap-hint">✓</div>' : ''}
+            <button class="ke-gallery-btn" title="Выбрать из галереи">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            </button>
             ${hint ? `<button class="photo-type-hint-btn" data-hint="${hint.replace(/"/g, '&quot;')}" title="Подсказка">?</button>` : ''}
           </div>`;
       }
@@ -626,6 +670,9 @@
               <div class="photo-type-name">${pt.filename}</div>
             </div>
             ${hasPhoto ? '<div class="photo-type-tap-hint">✓</div>' : ''}
+            <button class="ke-gallery-btn" title="Выбрать из галереи">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            </button>
             ${hint ? `<button class="photo-type-hint-btn" data-hint="${hint.replace(/"/g, '&quot;')}" title="Подсказка">?</button>` : ''}
           </div>`;
       }
@@ -681,6 +728,16 @@
       });
     });
 
+    container.querySelectorAll('.ke-gallery-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const item = btn.closest('.photo-type-item');
+        if (!item) return;
+        selectedPhotoType = item.dataset.typeId;
+        document.getElementById('gallery-input').click();
+      });
+    });
+
     if (regularTypes.length > 0 && !selectedPhotoType) {
       selectedPhotoType = regularTypes[0].id;
       container.querySelector(`.photo-type-item[data-type-id="${selectedPhotoType}"]`)?.classList.add('selected');
@@ -699,7 +756,7 @@
       return `
         <div class="photo-item" data-index="${i}">
           <img src="${p.dataUrl}" alt="">
-          <button class="photo-item-delete" data-index="${i}"></button>
+          <button class="photo-item-delete" data-index="${i}">×</button>
           <div class="photo-type-label">${typeName}</div>
         </div>
       `;
@@ -723,6 +780,7 @@
 
     container.querySelectorAll('.photo-item-delete').forEach(btn => {
       btn.addEventListener('click', () => {
+        if (!confirm('Удалить фото?')) return;
         section.photos.splice(parseInt(btn.dataset.index), 1);
         renderSectionPhotos(section);
         renderPhotoTypes(section);
@@ -753,13 +811,27 @@
     e.target.value = '';
   }
 
+  function getPhotoMaxSize() {
+    const q = localStorage.getItem('photoQuality') || 'medium';
+    if (q === 'low') return 1024;
+    if (q === 'high') return 3264;
+    return 1920;
+  }
+
+  function getScannerRes() {
+    const q = localStorage.getItem('scannerQuality') || 'medium';
+    if (q === 'low') return { width: { ideal: 640 }, height: { ideal: 480 } };
+    if (q === 'high') return { width: { ideal: 1920 }, height: { ideal: 1080 } };
+    return { width: { ideal: 1280 }, height: { ideal: 720 } };
+  }
+
   function processImage(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const maxSize = 1920;
+        const maxSize = getPhotoMaxSize();
         let w = img.width, h = img.height;
         if (w > h && w > maxSize) { h = h * maxSize / w; w = maxSize; }
         else if (h > maxSize) { w = w * maxSize / h; h = maxSize; }
@@ -811,10 +883,21 @@
   function closePreview() {
     document.getElementById('photo-preview-modal').classList.add('hidden');
     document.getElementById('preview-image').src = '';
+    if (galleryPreviewActive) {
+      galleryPreviewActive = false;
+      const galleryModal = document.getElementById('photo-gallery-modal');
+      if (galleryModal) {
+        galleryModal.classList.remove('hidden');
+        if (window.__gallerySection) {
+          renderGalleryGrid(window.__gallerySection);
+        }
+      }
+    }
   }
 
   function deletePreviewPhoto(section) {
     if (previewPhotoIdx < 0 || previewPhotoIdx >= section.photos.length) return;
+    if (!confirm('Удалить фото?')) return;
     section.photos.splice(previewPhotoIdx, 1);
     previewPhotoIdx = -1;
     closePreview();
@@ -843,7 +926,9 @@
     const photo = section.photos[photoIdx];
     if (!photo) return;
     const pt = section.photoTypes.find(t => t.id === selectedPhotoType);
-    openPhotoPreview(section, pt, photo);
+    galleryPreviewActive = true;
+    document.getElementById('photo-gallery-modal').classList.add('hidden');
+    galleryPhotoTap(section, pt, photo);
   };
 
   function renderGalleryGrid(section) {
@@ -863,7 +948,7 @@
       return `
         <div class="gallery-item" data-idx="${i}" data-photo-idx="${photoIdx}" onclick="window.__galleryTap(${photoIdx})">
           <img src="${p.dataUrl}" alt="">
-          <button class="gallery-item-delete" data-idx="${i}" data-photo-idx="${photoIdx}"></button>
+          <button class="gallery-item-delete" data-idx="${i}" data-photo-idx="${photoIdx}">×</button>
         </div>
       `;
     }).join('');
@@ -874,6 +959,7 @@
         const photoIdx = parseInt(btn.dataset.photoIdx);
         const photo = section.photos[photoIdx];
         if (photo) {
+          if (!confirm('Удалить фото?')) return;
           section.photos.splice(photoIdx, 1);
           renderGalleryGrid(section);
           renderSectionPhotos(section);
@@ -932,7 +1018,7 @@
       if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
       if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); }
 
-      videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', ...getScannerRes() } });
       video.srcObject = videoStream;
       lastScannedCode = null;
       scanCooldown = false;
@@ -1288,7 +1374,7 @@
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const maxSize = 1920;
+          const maxSize = getPhotoMaxSize();
           let w = img.width, h = img.height;
           if (w > h && w > maxSize) { h = h * maxSize / w; w = maxSize; }
           else if (h > maxSize) { w = w * maxSize / h; h = maxSize; }
@@ -1485,7 +1571,7 @@
     });
   }
 
-  function deleteReport() {
+  function deleteCurrentReport() {
     reportDiscarded = true;
     if (currentReport && currentReport.id) {
       const tx = db.transaction(STORE_NAME, 'readwrite');

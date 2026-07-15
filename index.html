@@ -15,9 +15,12 @@
 <body>
   <header class="header">
     <div class="header-inner">
-      <button class="header-back" id="header-back">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
-      </button>
+      <div class="header-left">
+        <button class="header-back" id="header-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <button class="header-help" id="btn-help" title="Справка">?</button>
+      </div>
       <div class="logo">
         <div class="logo-icon">M</div>
         <span>Фото Отчёты</span>
@@ -33,6 +36,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
           <span>Установить приложение</span>
         </div>
+        <div class="menu-item" id="menu-settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          <span>Настройки</span>
+        </div>
       </div>
     </div>
   </header>
@@ -42,7 +49,7 @@
     <section id="page-home" class="page">
       <div class="hero">
         <button class="btn btn-primary btn-large" id="btn-new-report">
-          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="20" height="20" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
           Создать отчёт
         </button>
       </div>
@@ -219,6 +226,80 @@
         </button>
         <button class="btn btn-text" id="btn-new-from-complete">Создать новый отчёт</button>
         <button class="btn btn-danger btn-block" id="btn-delete-report">Удалить отчёт</button>
+      </div>
+    </section>
+
+    <!-- HELP PAGE -->
+    <section id="page-help" class="page hidden">
+      <h1 class="page-title">Справка</h1>
+      <div class="help-content">
+        <div class="help-section">
+          <h3>Создание отчёта</h3>
+          <p>На главном экране нажмите <strong>«Создать отчёт»</strong>. Заполните тип объекта, название, дату и укажите исполнителя. Нажмите <strong>«Начать»</strong>.</p>
+        </div>
+        <div class="help-section">
+          <h3>Фотографирование</h3>
+          <p>Выберите раздел оборудования (Касса, ТД, УКС и т.д.). Внутри раздела нажимайте на кнопки типов фото, чтобы сделать снимки.</p>
+          <ul>
+            <li><strong>Обычные фото</strong> — нажмите на тип, чтобы сделать фото. При наличии снимков откроется галерея.</li>
+            <li><strong>КЕ (инвентарные номера)</strong> — нажмите, чтобы открыть сканер штрихкода. Наведите камеру на наклейку КЕ, подтвердите код и сделайте фото.</li>
+            <li><strong>Серийные номера (СН)</strong> — то же самое, что КЕ, но для серийных номеров.</li>
+            <li><strong>Кнопка <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></strong> — выбрать фото из галереи устройства.</li>
+          </ul>
+        </div>
+        <div class="help-section">
+          <h3>Сканер штрих-кодов (КЕ и СН)</h3>
+          <p>При нажатии на кнопку КЕ или СН открывается сканер. Камера анализирует изображение в реальном времени.</p>
+          <ul>
+            <li><strong>Жёлтые рамки</strong> — вокруг найденных штрих-кодов на экране. Если кодов несколько, можно выбрать нужный, нажав на рамку.</li>
+            <li><strong>Подтверждение кода</strong> — после выбора или автоматического определения кода появится панель с найденным номером. Нажмите <strong>«Да»</strong> для подтверждения.</li>
+            <li><strong>Зелёная рамка</strong> — когда код подтверждён, вокруг него отображается зелёная рамка. Удерживайте код в кадре и нажмите <strong>«Сделать фото»</strong>.</li>
+            <li><strong>Красная рамка</strong> — код пропал из кадра или не читается. Верните камеру на код, чтобы рамка снова стала зелёной.</li>
+            <li><strong>Кнопка <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></strong> — выбрать фото с кодом из галереи устройства.</li>
+          </ul>
+          <p>Если камера не фокусируется на мелких ШК, в настройках можно повысить качество сканера.</p>
+        </div>
+        <div class="help-section">
+          <h3>Просмотр и удаление фото</h3>
+          <p>Внизу экрана отображаются все сделанные фото. Нажмите на фото для просмотра. Кнопка <strong>«Удалить»</strong> удаляет снимок.</p>
+        </div>
+        <div class="help-section">
+          <h3>Завершение отчёта</h3>
+          <p>Когда все фото сделаны, нажмите кнопку <strong>«Далее»</strong> внизу. Проверьте чеклист — все ли снимки готовы. Нажмите <strong>«Завершить»</strong>, чтобы отправить отчёт.</p>
+        </div>
+        <div class="help-section">
+          <h3>Отправка</h3>
+          <p>На странице завершения нажмите <strong>«Отправить отчёт»</strong>. Приложение создаст ZIP-архив со всеми фото и JSON-данными и откроет стандартное меню отправки.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SETTINGS PAGE -->
+    <section id="page-settings" class="page hidden">
+      <h1 class="page-title">Настройки</h1>
+      <div class="settings-content">
+        <div class="settings-group">
+          <h3>Качество фото</h3>
+          <p class="settings-desc">Размер и качество снимков для обычных фото</p>
+          <label class="settings-radio"><input type="radio" name="photoQuality" value="low" data-key="photoQuality"> Эконом (1024px)</label>
+          <label class="settings-radio"><input type="radio" name="photoQuality" value="medium" data-key="photoQuality"> Среднее (1920px)</label>
+          <label class="settings-radio"><input type="radio" name="photoQuality" value="high" data-key="photoQuality"> Высокое (3264px)</label>
+        </div>
+        <div class="settings-group">
+          <h3>Качество сканера КЕ / СН</h3>
+          <p class="settings-desc">Разрешение камеры при сканировании штрих-кодов</p>
+          <label class="settings-radio"><input type="radio" name="scannerQuality" value="low" data-key="scannerQuality"> Низкое (640×480)</label>
+          <label class="settings-radio"><input type="radio" name="scannerQuality" value="medium" data-key="scannerQuality"> Среднее (1280×720)</label>
+          <label class="settings-radio"><input type="radio" name="scannerQuality" value="high" data-key="scannerQuality"> Высокое (1920×1080)</label>
+        </div>
+        <div class="settings-group">
+          <h3>Оформление</h3>
+          <label class="settings-toggle">
+            <input type="checkbox" id="settings-dark-theme">
+            <span class="toggle-track"></span>
+            <span class="toggle-label">Тёмная тема</span>
+          </label>
+        </div>
       </div>
     </section>
   </main>

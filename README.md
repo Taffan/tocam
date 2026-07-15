@@ -29,6 +29,11 @@ PWA for creating technical maintenance reports for Magnit retail stores.
 | Photo capture + gallery preview | Фотофиксация + просмотр/галерея |
 | KE (inventory numbers) — barcode scanner + preview | КЕ (инвентарные номера) — сканер ШК + превью |
 | SN (serial numbers) — barcode scanner + preview | СН (серийные номера) — сканер ШК + превью |
+| Interactive scanner: yellow boxes → select → green/red tracking | Интерактивный сканер: жёлтые рамки → выбор → зелёная/красная рамка |
+| Photo quality settings (3 levels) | Настройка качества фото (3 уровня) |
+| Scanner quality settings (3 levels) | Настройка качества сканера (3 уровня) |
+| Dark theme | Тёмная тема |
+| Help page with usage guide | Справка с описанием функционала |
 | Offline auto-save | Автосохранение офлайн |
 | ZIP export with XLSX | Экспорт в ZIP с XLSX |
 
@@ -139,7 +144,20 @@ Serial numbers:
 - **KE mode:** 13-digit EAN-13 or 4-digit codes only (digits)
 - **SN mode:** any barcode or QR code accepted
 - Flicker-free overlays (cached code set, no DOM rebuild on unchanged frames)
+- Scanner resolution settings: Low (640×480), Medium (1280×720), High (1920×1080)
+- Gallery photo picker button for KE/SN (choose existing photo instead of scanning)
 - Sound + vibration
+
+## Settings / Настройки
+
+- **Photo quality:** Economy (1024px), Medium (1920px), High (3264px)
+- **Scanner quality:** Low (640×480), Medium (1280×720), High (1920×1080)
+- **Dark theme:** toggle switch, saved to localStorage
+
+## Help / Справка
+
+- Red "?" button in the header
+- Usage guide: report creation, photography, scanner, gallery, completion, export
 
 ---
 

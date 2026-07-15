@@ -5,6 +5,7 @@
   --background: #FFFFFF;
   --surface: #F5F5F7;
   --text-primary: #1D1D1F;
+  --text: #1D1D1F;
   --text-secondary: #86868B;
   --border: #E5E5EA;
   --success: #34C759;
@@ -203,6 +204,35 @@ body {
 .hero {
   padding: 48px 0;
   text-align: center;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.header-help {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #DC0000;
+  background: transparent;
+  color: #DC0000;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.header-help:hover,
+.header-help:active {
+  background: #DC0000;
+  color: #fff;
 }
 
 /* Buttons */
@@ -910,7 +940,8 @@ body {
   min-width: 28px;
 }
 
-.ke-sn-column .photo-type-hint-btn {
+.ke-sn-column .photo-type-hint-btn,
+.ke-sn-column .ke-gallery-btn {
   width: 20px;
   height: 20px;
   font-size: 10px;
@@ -999,6 +1030,33 @@ body {
 }
 
 .photo-type-item.hint-open .photo-type-hint-btn {
+  background: var(--primary);
+  color: white;
+}
+
+.ke-gallery-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  background: var(--surface);
+  color: var(--primary);
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.ke-gallery-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ke-gallery-btn:hover,
+.ke-gallery-btn:active {
   background: var(--primary);
   color: white;
 }
@@ -2146,9 +2204,6 @@ body {
   z-index: 2;
 }
 
-.gallery-item-delete::after {
-  content: '×';
-}
 
 .gallery-item-label {
   position: absolute;
@@ -2175,4 +2230,177 @@ body {
   padding: 40px;
   color: var(--text-secondary);
   font-size: 14px;
+}
+
+/* Help Page */
+.help-content {
+  padding: 16px;
+}
+
+.help-section {
+  margin-bottom: 24px;
+}
+
+.help-section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.help-section p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+}
+
+.help-section ul {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.help-section li {
+  margin-bottom: 4px;
+}
+
+.help-section li svg {
+  vertical-align: middle;
+}
+
+/* Settings Page */
+.settings-content {
+  padding: 16px;
+}
+
+.settings-group {
+  margin-bottom: 28px;
+}
+
+.settings-group h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--text);
+}
+
+.settings-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+
+.settings-radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.settings-radio:hover {
+  background: var(--surface);
+}
+
+.settings-radio input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.toggle-track {
+  width: 48px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--border);
+  position: relative;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+
+.settings-toggle input {
+  display: none;
+}
+
+.settings-toggle input:checked + .toggle-track {
+  background: var(--primary);
+}
+
+.settings-toggle input:checked + .toggle-track::after {
+  transform: translateX(22px);
+}
+
+.toggle-label {
+  font-size: 15px;
+  color: var(--text);
+}
+
+/* Dark Theme */
+.dark {
+  --background: #121212;
+  --surface: #1e1e1e;
+  --text-primary: #e0e0e0;
+  --text-secondary: #999;
+  --border: #333;
+  --primary-light: rgba(220,0,0,0.15);
+  --text: #e0e0e0;
+}
+
+.dark .page {
+  background: var(--background);
+}
+
+.dark .header,
+.dark .gallery-header,
+.dark .gallery-footer,
+.dark .gallery-camera-btn,
+.dark .settings-radio:hover {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.dark .photo-type-item {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.dark .menu-content {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.dark .hero .btn-primary {
+  box-shadow: none;
+}
+
+.dark .btn-help {
+  background: transparent;
+  border-color: #DC0000;
 }

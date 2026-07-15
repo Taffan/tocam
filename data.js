@@ -22,9 +22,9 @@ const TYPE_CONFIGS = {
       { id: 'td', name: 'ТД', icon: 'td' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
       { id: 'uks', name: 'УКС', icon: 'uks' },
+      { id: 'rmd', name: 'РМД', icon: 'rmd' },
       { id: 'vesi', name: 'Весы', icon: 'vesi' },
-      { id: 'mp', name: 'Мобильный принтер', icon: 'mp' },
-      { id: 'rmd', name: 'РМД', icon: 'rmd' }
+      { id: 'mp', name: 'Мобильный принтер', icon: 'mp' }
     ],
     hasProchee: true
   },
