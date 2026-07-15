@@ -900,10 +900,21 @@ body {
   font-size: 13px;
 }
 
+.ke-sn-column .photo-type-item {
+  align-items: center;
+}
+
 .ke-sn-column .photo-type-check {
   width: 28px;
   height: 28px;
   min-width: 28px;
+}
+
+.ke-sn-column .photo-type-hint-btn {
+  width: 20px;
+  height: 20px;
+  font-size: 10px;
+  border-width: 1.5px;
 }
 
 .ke-pair > .ke-sn-column > .photo-type-item,
@@ -953,6 +964,60 @@ body {
   flex: 1;
   font-size: 15px;
   font-weight: 500;
+}
+
+.photo-type-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.photo-type-hint-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  background: var(--surface);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  margin-left: 4px;
+}
+
+.photo-type-hint-btn:hover,
+.photo-type-hint-btn:active {
+  background: var(--primary);
+  color: white;
+}
+
+.photo-type-item.hint-open .photo-type-hint-btn {
+  background: var(--primary);
+  color: white;
+}
+
+.photo-type-item {
+  flex-wrap: wrap;
+}
+
+.hint-popup {
+  width: 100%;
+  flex-basis: 100%;
+  background: var(--surface);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+  margin-top: 8px;
 }
 
 .photo-type-tap-hint {
@@ -1992,6 +2057,46 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--background);
+}
+
+.gallery-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  gap: 12px;
+}
+
+.gallery-close {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.gallery-close:hover {
+  background: var(--primary-light);
+}
+
+.gallery-close svg {
+  width: 20px;
+  height: 20px;
+}
+
+.gallery-title {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
 }
 
 .gallery-camera-btn {

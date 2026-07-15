@@ -24,8 +24,9 @@
   const STORE_NAME = 'reports';
 
   let db = null;
-  let currentReport = null;
-  let currentSectionIndex = null;
+  window.currentReport = null;
+  window.currentSectionIndex = null;
+  window.selectedPhotoType = null;
   let selectedPhotoType = null;
   let selectedType = null;
   let equipmentCounts = {};
@@ -236,14 +237,21 @@
     document.getElementById('gallery-capture').addEventListener('click', () => {
       document.getElementById('camera-input').click();
     });
-    document.getElementById('gallery-ok').addEventListener('click', () => {
+
+    function closeGallery(e) {
+      if (e) e.stopPropagation();
       document.getElementById('photo-gallery-modal').classList.add('hidden');
+      document.getElementById('photo-preview-modal').classList.add('hidden');
+      document.getElementById('preview-image').src = '';
       if (currentGallerySection) {
         renderSectionPhotos(currentGallerySection);
         renderPhotoTypes(currentGallerySection);
         currentGallerySection = null;
       }
-    });
+    }
+
+    document.getElementById('gallery-ok').addEventListener('click', closeGallery);
+    document.getElementById('gallery-close-btn').addEventListener('click', closeGallery);
   }
 
   function showPage(pageName) {
@@ -336,8 +344,10 @@
 
   function deleteReport(id) {
     const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).delete(id);
-    tx.oncomplete = () => loadDrafts();
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.delete(id);
+    request.onsuccess = () => loadDrafts();
+    request.onerror = () => loadDrafts();
   }
 
   function getTypeIcon(type) {
@@ -566,13 +576,17 @@
       const isComplete = photoCount >= maxPhotos;
       const isSelected = selectedPhotoType === pt.id && !isComplete;
       
+      const hint = pt.hint || '';
       html += `
         <div class="photo-type-item ${isComplete ? 'done' : ''} ${isSelected ? 'selected' : ''}" data-type-id="${pt.id}">
           <div class="photo-type-check">${isComplete ?
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>' :
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>'}</div>
-          <div class="photo-type-name">${pt.filename}</div>
+          <div class="photo-type-content">
+            <div class="photo-type-name">${pt.filename}</div>
+          </div>
           <div class="photo-type-tap-hint">${isMulti ? `${photoCount}/${maxPhotos}` : (isComplete ? '✓' : isSelected ? 'Нажмите' : 'Нажмите')}</div>
+          ${hint ? `<button class="photo-type-hint-btn" data-hint="${hint.replace(/"/g, '&quot;')}" title="Подсказка">?</button>` : ''}
         </div>
       `;
     });
@@ -587,24 +601,32 @@
         const hasPhoto = section.photos.some(p => p.typeId === pt.id);
         const isSelected = selectedPhotoType === pt.id && !hasPhoto;
         const btnClass = 'ke-type' + (hasPhoto ? ' done' : '') + (isSelected ? ' selected' : '');
+        const hint = pt.hint || '';
         return `<div class="photo-type-item ${btnClass}" data-type-id="${pt.id}">
             <div class="photo-type-check">${hasPhoto ?
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>' :
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>'}</div>
-            <div class="photo-type-name">${pt.filename}</div>
+            <div class="photo-type-content">
+              <div class="photo-type-name">${pt.filename}</div>
+            </div>
             ${hasPhoto ? '<div class="photo-type-tap-hint">✓</div>' : ''}
+            ${hint ? `<button class="photo-type-hint-btn" data-hint="${hint.replace(/"/g, '&quot;')}" title="Подсказка">?</button>` : ''}
           </div>`;
       }
       function renderSNCell(pt) {
         const hasPhoto = section.photos.some(p => p.typeId === pt.id);
         const isSelected = selectedPhotoType === pt.id && !hasPhoto;
         const btnClass = 'sn-type' + (hasPhoto ? ' done' : '') + (isSelected ? ' selected' : '');
+        const hint = pt.hint || '';
         return `<div class="photo-type-item ${btnClass}" data-type-id="${pt.id}">
             <div class="photo-type-check">${hasPhoto ?
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>' :
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>'}</div>
-            <div class="photo-type-name">${pt.filename}</div>
+            <div class="photo-type-content">
+              <div class="photo-type-name">${pt.filename}</div>
+            </div>
             ${hasPhoto ? '<div class="photo-type-tap-hint">✓</div>' : ''}
+            ${hint ? `<button class="photo-type-hint-btn" data-hint="${hint.replace(/"/g, '&quot;')}" title="Подсказка">?</button>` : ''}
           </div>`;
       }
 
@@ -622,7 +644,7 @@
     container.innerHTML = html;
 
     container.querySelectorAll('.photo-type-item').forEach(item => {
-      item.addEventListener('click', () => {
+      item.addEventListener('click', (e) => {
         const typeId = item.dataset.typeId;
         const pt = section.photoTypes.find(t => t.id === typeId);
         selectedPhotoType = typeId;
@@ -636,6 +658,25 @@
           const existing = section.photos.filter(p => p.typeId === typeId);
           if (existing.length > 0) openPhotoGallery(section, pt);
           else document.getElementById('camera-input').click();
+        }
+      });
+    });
+
+    container.querySelectorAll('.photo-type-hint-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const item = btn.closest('.photo-type-item');
+        const isOpen = item.classList.contains('hint-open');
+        document.querySelectorAll('.photo-type-item.hint-open').forEach(el => {
+          el.classList.remove('hint-open');
+          el.querySelector('.hint-popup')?.remove();
+        });
+        if (!isOpen) {
+          item.classList.add('hint-open');
+          const popup = document.createElement('div');
+          popup.className = 'hint-popup';
+          popup.textContent = btn.dataset.hint;
+          item.appendChild(popup);
         }
       });
     });
@@ -686,6 +727,17 @@
         renderSectionPhotos(section);
         renderPhotoTypes(section);
         scheduleAutoSave();
+      });
+    });
+
+    container.querySelectorAll('.photo-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        if (e.target.closest('.photo-item-delete')) return;
+        const idx = parseInt(item.dataset.index);
+        const photo = section.photos[idx];
+        const pt = section.photoTypes.find(t => t.id === photo.typeId);
+        selectedPhotoType = pt.id;
+        openPhotoPreview(section, pt, photo);
       });
     });
   }
@@ -777,9 +829,22 @@
 
   function openPhotoGallery(section, pt) {
     currentGallerySection = section;
+    window.__gallerySection = section;
+    window.__galleryPhotos = section.photos.filter(p => p.typeId === selectedPhotoType);
+    const titleEl = document.getElementById('gallery-title');
+    if (titleEl) titleEl.textContent = pt?.name || '';
     renderGalleryGrid(section);
     document.getElementById('photo-gallery-modal').classList.remove('hidden');
   }
+
+  window.__galleryTap = function(photoIdx) {
+    const section = window.__gallerySection;
+    if (!section) return;
+    const photo = section.photos[photoIdx];
+    if (!photo) return;
+    const pt = section.photoTypes.find(t => t.id === selectedPhotoType);
+    openPhotoPreview(section, pt, photo);
+  };
 
   function renderGalleryGrid(section) {
     const grid = document.getElementById('gallery-grid');
@@ -793,28 +858,28 @@
       grid.innerHTML = '<div class="gallery-empty">Нет фото</div>';
       return;
     }
-    grid.innerHTML = photos.map((p, i) => `
-      <div class="gallery-item" data-idx="${i}">
-        <img src="${p.dataUrl}" alt="">
-        <button class="gallery-item-delete" data-idx="${i}"></button>
-      </div>
-    `).join('');
-    grid.querySelectorAll('.gallery-item').forEach(el => {
-      el.addEventListener('click', (e) => {
-        if (e.target.closest('.gallery-item-delete')) return;
-        const idx = parseInt(el.dataset.idx);
-        galleryPhotoTap(section, pt, photos[idx]);
-      });
-    });
+    grid.innerHTML = photos.map((p, i) => {
+      const photoIdx = section.photos.indexOf(p);
+      return `
+        <div class="gallery-item" data-idx="${i}" data-photo-idx="${photoIdx}" onclick="window.__galleryTap(${photoIdx})">
+          <img src="${p.dataUrl}" alt="">
+          <button class="gallery-item-delete" data-idx="${i}" data-photo-idx="${photoIdx}"></button>
+        </div>
+      `;
+    }).join('');
+
     grid.querySelectorAll('.gallery-item-delete').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const idx = parseInt(btn.dataset.idx);
-        section.photos.splice(idx, 1);
-        renderGalleryGrid(section);
-        renderSectionPhotos(section);
-        renderPhotoTypes(section);
-        scheduleAutoSave();
+        const photoIdx = parseInt(btn.dataset.photoIdx);
+        const photo = section.photos[photoIdx];
+        if (photo) {
+          section.photos.splice(photoIdx, 1);
+          renderGalleryGrid(section);
+          renderSectionPhotos(section);
+          renderPhotoTypes(section);
+          scheduleAutoSave();
+        }
       });
     });
   }
