@@ -226,6 +226,24 @@
       }
     });
     document.getElementById('ke-cam-video').addEventListener('click', keCamCapture);
+
+    document.getElementById('preview-ok').addEventListener('click', closePreview);
+    document.getElementById('preview-back').addEventListener('click', closePreview);
+    document.getElementById('preview-delete').addEventListener('click', () => {
+      const section = currentReport.sections[currentSectionIndex];
+      deletePreviewPhoto(section);
+    });
+    document.getElementById('gallery-capture').addEventListener('click', () => {
+      document.getElementById('camera-input').click();
+    });
+    document.getElementById('gallery-ok').addEventListener('click', () => {
+      document.getElementById('photo-gallery-modal').classList.add('hidden');
+      if (currentGallerySection) {
+        renderSectionPhotos(currentGallerySection);
+        renderPhotoTypes(currentGallerySection);
+        currentGallerySection = null;
+      }
+    });
   }
 
   function showPage(pageName) {
@@ -607,20 +625,17 @@
       item.addEventListener('click', () => {
         const typeId = item.dataset.typeId;
         const pt = section.photoTypes.find(t => t.id === typeId);
-        const photoCount = section.photos.filter(p => p.typeId === typeId).length;
-        const isMulti = pt?.multi === true;
-        const maxPhotos = isMulti ? (pt.maxPhotos || 4) : 1;
-        
-        if (photoCount >= maxPhotos) return;
-        
         selectedPhotoType = typeId;
         container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
         item.classList.add('selected');
-        
         if (pt?.isKE || pt?.isSN) {
-          openKEScanner();
+          const photo = section.photos.find(p => p.typeId === typeId);
+          if (photo) openPhotoPreview(section, pt, photo);
+          else openKEScanner();
         } else {
-          document.getElementById('camera-input').click();
+          const existing = section.photos.filter(p => p.typeId === typeId);
+          if (existing.length > 0) openPhotoGallery(section, pt);
+          else document.getElementById('camera-input').click();
         }
       });
     });
@@ -710,13 +725,98 @@
           timestamp: new Date().toISOString()
         });
 
-        renderSectionPhotos(section);
-        renderPhotoTypes(section);
+        const galleryModal = document.getElementById('photo-gallery-modal');
+        if (galleryModal && !galleryModal.classList.contains('hidden')) {
+          renderGalleryGrid(section);
+        } else {
+          renderSectionPhotos(section);
+          renderPhotoTypes(section);
+        }
         scheduleAutoSave();
       };
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
+  }
+
+  let previewPhotoIdx = -1;
+  let currentGallerySection = null;
+
+  function openPhotoPreview(section, pt, photo) {
+    previewPhotoIdx = section.photos.indexOf(photo);
+    document.getElementById('preview-image').src = photo.dataUrl;
+    document.getElementById('preview-back').classList.add('hidden');
+    document.getElementById('photo-preview-modal').classList.remove('hidden');
+  }
+
+  function galleryPhotoTap(section, pt, photo) {
+    previewPhotoIdx = section.photos.indexOf(photo);
+    document.getElementById('preview-image').src = photo.dataUrl;
+    document.getElementById('preview-back').classList.remove('hidden');
+    document.getElementById('photo-preview-modal').classList.remove('hidden');
+  }
+
+  function closePreview() {
+    document.getElementById('photo-preview-modal').classList.add('hidden');
+    document.getElementById('preview-image').src = '';
+  }
+
+  function deletePreviewPhoto(section) {
+    if (previewPhotoIdx < 0 || previewPhotoIdx >= section.photos.length) return;
+    section.photos.splice(previewPhotoIdx, 1);
+    previewPhotoIdx = -1;
+    closePreview();
+    const galleryModal = document.getElementById('photo-gallery-modal');
+    if (galleryModal && !galleryModal.classList.contains('hidden')) {
+      renderGalleryGrid(section);
+    }
+    renderSectionPhotos(section);
+    renderPhotoTypes(section);
+    scheduleAutoSave();
+  }
+
+  function openPhotoGallery(section, pt) {
+    currentGallerySection = section;
+    renderGalleryGrid(section);
+    document.getElementById('photo-gallery-modal').classList.remove('hidden');
+  }
+
+  function renderGalleryGrid(section) {
+    const grid = document.getElementById('gallery-grid');
+    const photos = section.photos.filter(p => p.typeId === selectedPhotoType);
+    const pt = section.photoTypes.find(t => t.id === selectedPhotoType);
+    const isMulti = pt?.multi === true;
+    const maxPhotos = isMulti ? (pt.maxPhotos || 4) : 1;
+    const captureBtn = document.getElementById('gallery-capture');
+    if (captureBtn) captureBtn.style.display = (photos.length >= maxPhotos) ? 'none' : '';
+    if (!photos.length) {
+      grid.innerHTML = '<div class="gallery-empty">Нет фото</div>';
+      return;
+    }
+    grid.innerHTML = photos.map((p, i) => `
+      <div class="gallery-item" data-idx="${i}">
+        <img src="${p.dataUrl}" alt="">
+        <button class="gallery-item-delete" data-idx="${i}"></button>
+      </div>
+    `).join('');
+    grid.querySelectorAll('.gallery-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('.gallery-item-delete')) return;
+        const idx = parseInt(el.dataset.idx);
+        galleryPhotoTap(section, pt, photos[idx]);
+      });
+    });
+    grid.querySelectorAll('.gallery-item-delete').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.idx);
+        section.photos.splice(idx, 1);
+        renderGalleryGrid(section);
+        renderSectionPhotos(section);
+        renderPhotoTypes(section);
+        scheduleAutoSave();
+      });
+    });
   }
 
   function saveCurrentSection() {

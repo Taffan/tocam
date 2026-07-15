@@ -26,9 +26,9 @@ PWA for creating technical maintenance reports for Magnit retail stores.
 |-------|-------|
 | 3 report types: MK, MM, MA | 3 типа отчётов: МК, ММ, МА |
 | Equipment configuration | Конфигурация оборудования |
-| Photo capture (camera + gallery) | Фотофиксация (камера + галерея) |
-| KE (inventory numbers) — barcode scanner | КЕ (инвентарные номера) — сканер ШК |
-| SN (serial numbers) — barcode scanner | СН (серийные номера) — сканер ШК |
+| Photo capture + gallery preview | Фотофиксация + просмотр/галерея |
+| KE (inventory numbers) — barcode scanner + preview | КЕ (инвентарные номера) — сканер ШК + превью |
+| SN (serial numbers) — barcode scanner + preview | СН (серийные номера) — сканер ШК + превью |
 | Offline auto-save | Автосохранение офлайн |
 | ZIP export with XLSX | Экспорт в ZIP с XLSX |
 
