@@ -689,26 +689,45 @@
 
     let longPressTimer = null;
     let longPressActivated = false;
+    let longPressTypeId = null;
 
     function clearLongPress() {
       if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
     }
     document.addEventListener('pointerup', clearLongPress);
     document.addEventListener('pointercancel', clearLongPress);
+    document.addEventListener('touchend', clearLongPress);
+    document.addEventListener('touchcancel', clearLongPress);
 
     container.querySelectorAll('.photo-type-item').forEach(item => {
-      item.addEventListener('pointerdown', (e) => {
+      function onPressStart(e) {
         e.preventDefault();
         longPressActivated = false;
+        longPressTypeId = item.dataset.typeId;
         longPressTimer = setTimeout(() => {
           longPressActivated = true;
-          const typeId = item.dataset.typeId;
-          selectedPhotoType = typeId;
+          selectedPhotoType = longPressTypeId;
           container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
           item.classList.add('selected');
-          document.getElementById('gallery-input').click();
         }, 3000);
-      });
+      }
+
+      function onPressEnd(e) {
+        if (!longPressTimer) return;
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+        if (longPressActivated) {
+          longPressActivated = false;
+          e.preventDefault();
+          document.getElementById('gallery-input').click();
+        }
+      }
+
+      item.addEventListener('pointerdown', onPressStart);
+      item.addEventListener('touchstart', onPressStart, { passive: false });
+      item.addEventListener('pointerup', onPressEnd);
+      item.addEventListener('touchend', onPressEnd);
+      item.addEventListener('touchcancel', () => { clearTimeout(longPressTimer); longPressActivated = false; });
 
       item.addEventListener('click', (e) => {
         if (longPressActivated) {
@@ -1033,59 +1052,32 @@
 
       videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', ...getScannerRes() } });
       video.srcObject = videoStream;
+      try { await video.play(); } catch(e) {}
       lastScannedCode = null;
       scanCooldown = false;
 
       if ('BarcodeDetector' in window) {
-        const det = new BarcodeDetector({
-          formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417']
-        });
-        scanTimer = setInterval(async () => {
-          if (scanCooldown || video.readyState < 2 || !video.videoWidth) return;
-          try {
-            const codes = await det.detect(video);
-            if (pendingScanCode) {
-              updateTrackingUI(codes.some(c => c.rawValue === pendingScanCode));
-            } else {
-              showBarcodeOverlays(codes, video.videoWidth, video.videoHeight);
-            }
-          } catch(e) {}
-        }, 300);
+        try {
+          const det = new BarcodeDetector({
+            formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417']
+          });
+          scanTimer = setInterval(async () => {
+            if (scanCooldown || video.readyState < 2 || !video.videoWidth) return;
+            try {
+              const codes = await det.detect(video);
+              if (pendingScanCode) {
+                updateTrackingUI(codes.some(c => c.rawValue === pendingScanCode));
+              } else {
+                showBarcodeOverlays(codes, video.videoWidth, video.videoHeight);
+              }
+            } catch(e) {}
+          }, 300);
+        } catch(e) {
+          if (typeof ZXing !== 'undefined') initZXingScanner(video);
+          else showToast('Сканер не поддерживается — используйте фото');
+        }
       } else if (typeof ZXing !== 'undefined') {
-        const hints = new Map();
-        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-          ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
-          ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
-          ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.UPC_A,
-          ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.ITF
-        ]);
-        const reader = new ZXing.MultiFormatReader();
-        reader.setHints(hints);
-        window._zxingReader = reader;
-        window._zxingCv = document.createElement('canvas');
-        window._zxingCv.style.display = 'none';
-        document.body.appendChild(window._zxingCv);
-        const ctx = window._zxingCv.getContext('2d');
-
-        scanTimer = setInterval(() => {
-          if (scanCooldown || video.readyState < 2 || !video.videoWidth) return;
-          try {
-            window._zxingCv.width = video.videoWidth;
-            window._zxingCv.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0);
-            const imgData = ctx.getImageData(0, 0, window._zxingCv.width, window._zxingCv.height);
-            const lum = new ZXing.RGBLuminanceSource(imgData.data, window._zxingCv.width, window._zxingCv.height);
-            const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
-            const result = window._zxingReader.decode(bmp);
-            if (pendingScanCode) {
-              updateTrackingUI(result && result.getText() === pendingScanCode);
-            } else if (result) {
-              onScanCodeFound(result.getText());
-            }
-          } catch(e) {
-            if (pendingScanCode) updateTrackingUI(false);
-          }
-        }, 400);
+        initZXingScanner(video);
       } else {
         showToast('Сканер не поддерживается — используйте фото');
       }
@@ -1115,7 +1107,7 @@
     const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
     const isSN = pt?.isSN;
     const detected = codes.filter(c => {
-      if (!c.rawValue || !c.rawValue.trim() || !c.boundingBox) return false;
+      if (!c.rawValue || !c.rawValue.trim()) return false;
       if (isSN) return true;
       return isKECode(c.rawValue);
     });
@@ -1133,7 +1125,10 @@
     const scaleY = ch / vh;
     let html = '';
     detected.forEach((c, i) => {
-      const bx = c.boundingBox;
+      let bx = c.boundingBox;
+      if (!bx || typeof bx.x !== 'number') {
+        bx = { x: vw * 0.2, y: vh * 0.35, width: vw * 0.6, height: vh * 0.3 };
+      }
       const left = Math.max(0, bx.x * scaleX);
       const top = Math.max(0, bx.y * scaleY);
       const w = Math.min(cw - left, bx.width * scaleX);
@@ -1147,6 +1142,43 @@
         selectBarcodeCode(code);
       });
     });
+  }
+
+  function initZXingScanner(video) {
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.UPC_A,
+      ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.ITF
+    ]);
+    const reader = new ZXing.MultiFormatReader();
+    reader.setHints(hints);
+    window._zxingReader = reader;
+    window._zxingCv = document.createElement('canvas');
+    window._zxingCv.style.display = 'none';
+    document.body.appendChild(window._zxingCv);
+    const ctx = window._zxingCv.getContext('2d');
+
+    scanTimer = setInterval(() => {
+      if (scanCooldown || video.readyState < 2 || !video.videoWidth) return;
+      try {
+        window._zxingCv.width = video.videoWidth;
+        window._zxingCv.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        const imgData = ctx.getImageData(0, 0, window._zxingCv.width, window._zxingCv.height);
+        const lum = new ZXing.RGBLuminanceSource(imgData.data, window._zxingCv.width, window._zxingCv.height);
+        const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+        const result = window._zxingReader.decode(bmp);
+        if (pendingScanCode) {
+          updateTrackingUI(result && result.getText() === pendingScanCode);
+        } else if (result) {
+          onScanCodeFound(result.getText());
+        }
+      } catch(e) {
+        if (pendingScanCode) updateTrackingUI(false);
+      }
+    }, 400);
   }
 
   function selectBarcodeCode(code) {
