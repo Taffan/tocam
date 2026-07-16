@@ -733,6 +733,7 @@
 
     container.querySelectorAll('.photo-type-item').forEach(item => {
       function onPressStart(e) {
+        if (e.pointerType === 'touch') return;
         e.preventDefault();
         longPressActivated = false;
         longPressTypeId = item.dataset.typeId;
@@ -745,7 +746,7 @@
       }
 
       function onPressEnd(e) {
-        if (!longPressTimer) return;
+        if (e.pointerType === 'touch') return;
         clearTimeout(longPressTimer);
         longPressTimer = null;
         if (longPressActivated) {
