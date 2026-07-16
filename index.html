@@ -19,16 +19,17 @@
         <button class="header-back" id="header-back">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 19l-7-7 7-7"/></svg>
         </button>
-        <button class="header-help" id="btn-help" title="Справка">?</button>
       </div>
       <div class="logo">
         <div class="logo-icon">M</div>
         <span>Фото Отчёты</span>
       </div>
-      <button class="header-menu" id="header-menu">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-      </button>
-    </div>
+      <div class="header-actions">
+        <button class="header-help" id="btn-help" title="Справка">?</button>
+        <button class="header-menu" id="header-menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+      </div>
     <div class="menu-dropdown hidden" id="menu-dropdown">
       <div class="menu-backdrop" id="menu-backdrop"></div>
       <div class="menu-content">
@@ -241,10 +242,10 @@
           <h3>Фотографирование</h3>
           <p>Выберите раздел оборудования (Касса, ТД, УКС и т.д.). Внутри раздела нажимайте на кнопки типов фото, чтобы сделать снимки.</p>
           <ul>
-            <li><strong>Обычные фото</strong> — нажмите на тип, чтобы сделать фото. При наличии снимков откроется галерея.</li>
+            <li><strong>Короткий тап</strong> — сделать фото через камеру (обычные фото) или открыть сканер (КЕ/СН).</li>
+            <li><strong>Долгое нажатие (3 сек)</strong> — выбрать фото из галереи устройства. Работает для всех типов: обычных, КЕ и СН.</li>
             <li><strong>КЕ (инвентарные номера)</strong> — нажмите, чтобы открыть сканер штрихкода. Наведите камеру на наклейку КЕ, подтвердите код и сделайте фото.</li>
             <li><strong>Серийные номера (СН)</strong> — то же самое, что КЕ, но для серийных номеров.</li>
-            <li><strong>Кнопка <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></strong> — выбрать фото из галереи устройства.</li>
           </ul>
         </div>
         <div class="help-section">
@@ -255,7 +256,7 @@
             <li><strong>Подтверждение кода</strong> — после выбора или автоматического определения кода появится панель с найденным номером. Нажмите <strong>«Да»</strong> для подтверждения.</li>
             <li><strong>Зелёная рамка</strong> — когда код подтверждён, вокруг него отображается зелёная рамка. Удерживайте код в кадре и нажмите <strong>«Сделать фото»</strong>.</li>
             <li><strong>Красная рамка</strong> — код пропал из кадра или не читается. Верните камеру на код, чтобы рамка снова стала зелёной.</li>
-            <li><strong>Кнопка <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></strong> — выбрать фото с кодом из галереи устройства.</li>
+            <li>Если нужно выбрать фото с кодом из галереи — закройте сканер и сделайте долгое нажатие (3 сек) на кнопке КЕ/СН.</li>
           </ul>
           <p>Если камера не фокусируется на мелких ШК, в настройках можно повысить качество сканера.</p>
         </div>

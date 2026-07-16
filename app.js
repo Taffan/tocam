@@ -177,7 +177,10 @@
       }
     });
     document.getElementById('btn-new-report').addEventListener('click', () => { cachedZipBlob = null; showPage('config'); });
-    document.getElementById('btn-help').addEventListener('click', () => showPage('help'));
+    document.getElementById('btn-help').addEventListener('click', () => {
+      if (currentPage === 'help') showPage(pageHistory.length > 1 ? pageHistory[pageHistory.length - 2] : 'home');
+      else showPage('help');
+    });
 
     document.querySelectorAll('.type-btn').forEach(btn => {
       btn.addEventListener('click', () => selectType(btn.dataset.type));

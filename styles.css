@@ -212,6 +212,12 @@ body {
   gap: 4px;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .header-help {
   width: 32px;
   height: 32px;
@@ -2372,7 +2378,7 @@ body {
   box-shadow: none;
 }
 
-.dark .btn-help {
+.dark .header-help {
   background: transparent;
   border-color: #DC0000;
 }
