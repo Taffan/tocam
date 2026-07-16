@@ -1,11 +1,11 @@
 (function() {
   'use strict';
 
-  const APP_VERSION = '1.0';
+  const APP_VERSION = '1.0.5.3';
 
   if ('serviceWorker' in navigator) {
     const stored = localStorage.getItem('appVersion');
-    if (stored && parseInt(stored, 10) < APP_VERSION) {
+    if (stored && stored !== APP_VERSION) {
       caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).catch(() => {});
     }
   }
@@ -181,10 +181,10 @@
     fetch('version.json?t=' + t, { cache: 'no-cache' })
       .then(r => r.json())
       .then(data => {
-        const stored = localStorage.getItem('appVersion');
-        if (!stored) { localStorage.setItem('appVersion', String(data.version)); return; }
-        const localVer = parseInt(stored, 10);
-        if (data.version > localVer) showUpdateUI(data.version);
+        const remoteVer = String(data.version);
+        const localVer = localStorage.getItem('appVersion');
+        if (!localVer) { localStorage.setItem('appVersion', remoteVer); return; }
+        if (remoteVer !== localVer) showUpdateUI(remoteVer);
       })
       .catch(() => {});
   }
