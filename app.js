@@ -230,7 +230,6 @@
 
   function setupEventListeners() {
     if (window.history && window.history.pushState) {
-      history.pushState(null, '');
       window.addEventListener('popstate', () => {
         const menu = document.getElementById('menu-dropdown');
         const gallery = document.getElementById('photo-gallery-modal');
@@ -256,10 +255,7 @@
           history.pushState(null, '');
           return;
         }
-        if (pageHistory.length > 1) {
-          goBack();
-          history.pushState(null, '');
-        }
+        goBack();
       });
     }
     document.getElementById('header-back').addEventListener('click', goBack);
@@ -387,6 +383,7 @@
       const photoQuality = localStorage.getItem('photoQuality') || 'medium';
       const scannerQuality = localStorage.getItem('scannerQuality') || 'medium';
       const darkTheme = localStorage.getItem('darkTheme') === 'true';
+      const savedTechnician = localStorage.getItem('technician') || '';
 
       document.querySelectorAll('input[name="photoQuality"]').forEach(r => {
         r.checked = r.value === photoQuality;
@@ -395,6 +392,8 @@
         r.checked = r.value === scannerQuality;
       });
       document.getElementById('settings-dark-theme').checked = darkTheme;
+      const techInput = document.getElementById('settings-technician');
+      if (techInput) techInput.value = savedTechnician;
 
       document.documentElement.classList.toggle('dark', darkTheme);
     }
@@ -414,6 +413,16 @@
       document.documentElement.classList.toggle('dark', e.target.checked);
     });
 
+    const settingsTechInput = document.getElementById('settings-technician');
+    if (settingsTechInput) {
+      settingsTechInput.addEventListener('input', () => {
+        saveSetting('technician', settingsTechInput.value);
+      });
+    }
+
+    const verEl = document.getElementById('settings-version-number');
+    if (verEl) verEl.textContent = APP_VERSION;
+
     loadSettings();
   }
 
@@ -425,8 +434,17 @@
     if (pageName === 'home') {
       pageHistory = ['home'];
       loadDrafts();
+    } else if (pageName === 'data') {
+      const savedTech = localStorage.getItem('technician') || '';
+      const input = document.getElementById('input-technician');
+      if (input && !input.value) input.value = savedTech;
+      if (pageHistory[pageHistory.length - 1] !== pageName) {
+        pageHistory.push(pageName);
+        if (window.history && window.history.pushState) history.pushState(null, '');
+      }
     } else if (pageHistory[pageHistory.length - 1] !== pageName) {
       pageHistory.push(pageName);
+      if (window.history && window.history.pushState) history.pushState(null, '');
     }
 
     updateHeaderBack();

@@ -302,6 +302,11 @@
           <label class="settings-radio"><input type="radio" name="scannerQuality" value="high" data-key="scannerQuality"> Высокое (1920×1080)</label>
         </div>
         <div class="settings-group">
+          <h3>Техник (автозаполнение)</h3>
+          <p class="settings-desc">ФИО будет подставляться автоматически в поле исполнителя при создании отчёта</p>
+          <input type="text" id="settings-technician" class="settings-input" placeholder="Иванов И.И.">
+        </div>
+        <div class="settings-group">
           <h3>Оформление</h3>
           <label class="settings-toggle">
             <input type="checkbox" id="settings-dark-theme">
@@ -309,6 +314,7 @@
             <span class="toggle-label">Тёмная тема</span>
           </label>
         </div>
+        <div class="settings-version">Версия приложения: <span id="settings-version-number"></span></div>
       </div>
     </section>
   </main>

@@ -174,16 +174,7 @@ body {
 
 .menu-item-update {
   color: var(--primary);
-  font-weight: 600;
-}
-
-.menu-item-update svg {
-  animation: updateSpin 2s linear infinite;
-}
-
-@keyframes updateSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  font-weight: 400;
 }
 
 .menu-dropdown {
@@ -2453,6 +2444,40 @@ body {
   color: var(--text);
 }
 
+.settings-version {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 24px 0 8px;
+}
+
+.settings-input {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-family: inherit;
+  background: var(--background);
+  color: var(--text);
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.dark .settings-input {
+  background: var(--background);
+  color: var(--text);
+}
+
+.dark .settings-input::placeholder {
+  color: var(--text-secondary);
+}
+
 /* Dark Theme */
 .dark {
   --background: #121212;
@@ -2563,4 +2588,16 @@ body {
   border-color: var(--border);
   border-right: none;
   border-bottom: none;
+}
+
+.dark .form-group input,
+.dark .form-group select,
+.dark .form-group textarea {
+  background: var(--background);
+  color: var(--text);
+}
+
+.dark .form-group input::placeholder,
+.dark .form-group textarea::placeholder {
+  color: var(--text-secondary);
 }
