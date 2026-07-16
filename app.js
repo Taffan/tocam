@@ -40,6 +40,8 @@
   let pendingScanCode = null;
   let deferredPrompt = null;
   let _updateBubble = null;
+  let _swReg = null;
+  let _updatePendingReload = false;
   let pageHistory = ['home'];
   let currentPage = 'home';
   let cachedZipBlob = null;
@@ -150,17 +152,41 @@
     }
   }
 
+  function showUpdateUI(newVersion) {
+    _updateBubble = newVersion || 1;
+    document.getElementById('update-bubble').classList.remove('hidden');
+    document.getElementById('menu-update').classList.remove('hidden');
+  }
+
   function checkForUpdates() {
+    if ('serviceWorker' in navigator) {
+      const doSWCheck = reg => {
+        _swReg = reg;
+        reg.addEventListener('updatefound', () => {
+          const sw = reg.installing || reg.waiting;
+          if (!sw) return;
+          sw.addEventListener('statechange', () => {
+            if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+              showUpdateUI();
+            }
+          });
+        });
+        if (reg.waiting && navigator.serviceWorker.controller) {
+          showUpdateUI();
+        }
+        reg.update();
+      };
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg) { doSWCheck(reg); return; }
+        navigator.serviceWorker.register('./sw.js', { scope: './' }).then(doSWCheck).catch(() => {});
+      }).catch(() => {});
+    }
     const t = Date.now();
     fetch('version.json?t=' + t, { cache: 'no-cache' })
       .then(r => r.json())
       .then(data => {
         const localVer = parseInt(localStorage.getItem('appVersion') || '0', 10);
-        if (data.version > localVer) {
-          _updateBubble = data.version;
-          document.getElementById('update-bubble').classList.remove('hidden');
-          document.getElementById('menu-update').classList.remove('hidden');
-        }
+        if (data.version > localVer) showUpdateUI(data.version);
       })
       .catch(() => {});
   }
@@ -168,15 +194,35 @@
   function performUpdate() {
     document.getElementById('menu-dropdown').classList.add('hidden');
     showToast('Обновление...');
-    if ('caches' in window) {
-      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
-        localStorage.setItem('appVersion', String(_updateBubble));
-        location.reload();
-      });
+    _updatePendingReload = true;
+    if (_swReg && _swReg.waiting) {
+      _swReg.waiting.postMessage('SKIP_WAITING');
     } else {
-      localStorage.setItem('appVersion', String(_updateBubble));
-      location.reload();
+      if ('caches' in window) {
+        caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
+          localStorage.setItem('appVersion', String(_updateBubble || 1));
+          location.reload();
+        });
+      } else {
+        localStorage.setItem('appVersion', String(_updateBubble || 1));
+        location.reload();
+      }
     }
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!_updatePendingReload) return;
+      if ('caches' in window) {
+        caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
+          localStorage.setItem('appVersion', String(_updateBubble || 1));
+          location.reload();
+        });
+      } else {
+        localStorage.setItem('appVersion', String(_updateBubble || 1));
+        location.reload();
+      }
+    });
   }
 
   function setupEventListeners() {
@@ -734,7 +780,6 @@
     container.querySelectorAll('.photo-type-item').forEach(item => {
       function onPressStart(e) {
         if (e.pointerType === 'touch') return;
-        e.preventDefault();
         longPressActivated = false;
         longPressTypeId = item.dataset.typeId;
         longPressTimer = setTimeout(() => {
@@ -757,7 +802,7 @@
       }
 
       item.addEventListener('pointerdown', onPressStart);
-      item.addEventListener('touchstart', onPressStart, { passive: false });
+      item.addEventListener('touchstart', onPressStart);
       item.addEventListener('pointerup', onPressEnd);
       item.addEventListener('touchend', onPressEnd);
       item.addEventListener('touchcancel', () => { clearTimeout(longPressTimer); longPressActivated = false; });
