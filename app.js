@@ -697,7 +697,8 @@
     document.addEventListener('pointercancel', clearLongPress);
 
     container.querySelectorAll('.photo-type-item').forEach(item => {
-      item.addEventListener('pointerdown', () => {
+      item.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
         longPressActivated = false;
         longPressTimer = setTimeout(() => {
           longPressActivated = true;
