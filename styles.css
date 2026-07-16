@@ -212,10 +212,12 @@ body {
   gap: 4px;
 }
 
-.header-actions {
+.header-end {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .header-help {
