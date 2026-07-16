@@ -25,9 +25,11 @@ PWA for creating technical maintenance reports for Magnit retail stores.
 | [EN] | [RU] |
 |-------|-------|
 | 3 report types: MK, MM, MA | 3 типа отчётов: МК, ММ, МА |
+| Torch/flashlight in barcode scanner | Фонарик в сканере ШК |
+| Auto-update via Service Worker | Автообновление через Service Worker |
 | Equipment configuration | Конфигурация оборудования |
 | Photo capture + gallery preview | Фотофиксация + просмотр/галерея |
-| Photo from device gallery (long press 3s) | Выбор фото из галереи (долгое нажатие 3с) |
+| Photo from device gallery (long press 1.5s) | Выбор фото из галереи (долгое нажатие 1.5с) |
 | KE (inventory numbers) — barcode scanner + preview | КЕ (инвентарные номера) — сканер ШК + превью |
 | SN (serial numbers) — barcode scanner + preview | СН (серийные номера) — сканер ШК + превью |
 | Interactive scanner: yellow boxes → select → green/red tracking | Интерактивный сканер: жёлтые рамки → выбор → зелёная/красная рамка |
@@ -146,7 +148,8 @@ Serial numbers:
 - **SN mode:** any barcode or QR code accepted
 - Flicker-free overlays (cached code set, no DOM rebuild on unchanged frames)
 - Scanner resolution settings: Low (640×480), Medium (1280×720), High (1920×1080)
-- Long press (3s) on any photo type button to pick from device gallery
+- Torch/flashlight toggle button in scanner (KE/SN)
+- Long press (1.5s) on any photo type button to pick from device gallery
 - Sound + vibration
 
 ## Settings / Настройки

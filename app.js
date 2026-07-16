@@ -26,20 +26,26 @@
   let db = null;
   window.currentReport = null;
   window.currentSectionIndex = null;
-  window.selectedPhotoType = null;
   let selectedPhotoType = null;
   let selectedType = null;
   let galleryPreviewActive = false;
   let equipmentCounts = {};
-  let codeReader = null;
   let videoStream = null;
   let lastScannedCode = null;
   let autoSaveTimer = null;
   let scanCooldown = false;
   let scanTimer = null;
   let pendingScanCode = null;
+  let detectFailCount = 0;
+  let torchOn = false;
   let deferredPrompt = null;
   let _updateBubble = null;
+  let longPressTimer = null;
+  let longPressActivated = false;
+  let longPressTypeId = null;
+  function clearLongPress() {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+  }
   let _swReg = null;
   let _updatePendingReload = false;
   let pageHistory = ['home'];
@@ -185,7 +191,9 @@
     fetch('version.json?t=' + t, { cache: 'no-cache' })
       .then(r => r.json())
       .then(data => {
-        const localVer = parseInt(localStorage.getItem('appVersion') || '0', 10);
+        const stored = localStorage.getItem('appVersion');
+        if (!stored) { localStorage.setItem('appVersion', String(data.version)); return; }
+        const localVer = parseInt(stored, 10);
         if (data.version > localVer) showUpdateUI(data.version);
       })
       .catch(() => {});
@@ -260,6 +268,11 @@
       else showPage('help');
     });
 
+    document.addEventListener('pointerup', clearLongPress);
+    document.addEventListener('pointercancel', clearLongPress);
+    document.addEventListener('touchend', clearLongPress);
+    document.addEventListener('touchcancel', clearLongPress);
+
     document.querySelectorAll('.type-btn').forEach(btn => {
       btn.addEventListener('click', () => selectType(btn.dataset.type));
     });
@@ -299,6 +312,7 @@
       showPage('home');
     });
 
+    document.getElementById('ke-cam-torch').addEventListener('click', toggleTorch);
     document.getElementById('ke-cam-capture').addEventListener('click', keCamCapture);
     document.getElementById('ke-cam-close').addEventListener('click', closeKEModal);
     document.getElementById('ke-cam-confirm-yes').addEventListener('click', () => {
@@ -765,18 +779,6 @@
 
     container.innerHTML = html;
 
-    let longPressTimer = null;
-    let longPressActivated = false;
-    let longPressTypeId = null;
-
-    function clearLongPress() {
-      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
-    }
-    document.addEventListener('pointerup', clearLongPress);
-    document.addEventListener('pointercancel', clearLongPress);
-    document.addEventListener('touchend', clearLongPress);
-    document.addEventListener('touchcancel', clearLongPress);
-
     container.querySelectorAll('.photo-type-item').forEach(item => {
       function onPressStart(e) {
         if (e.pointerType === 'touch') return;
@@ -794,22 +796,21 @@
         if (e.pointerType === 'touch') return;
         clearTimeout(longPressTimer);
         longPressTimer = null;
-        if (longPressActivated) {
-          longPressActivated = false;
-          e.preventDefault();
-          document.getElementById('gallery-input').click();
-        }
       }
 
       item.addEventListener('pointerdown', onPressStart);
       item.addEventListener('touchstart', onPressStart);
       item.addEventListener('pointerup', onPressEnd);
-      item.addEventListener('touchend', onPressEnd);
+      item.addEventListener('touchend', () => {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      });
       item.addEventListener('touchcancel', () => { clearTimeout(longPressTimer); longPressActivated = false; });
 
       item.addEventListener('click', (e) => {
         if (longPressActivated) {
           longPressActivated = false;
+          document.getElementById('gallery-input').click();
           return;
         }
         const typeId = item.dataset.typeId;
@@ -1023,7 +1024,6 @@
   function openPhotoGallery(section, pt) {
     currentGallerySection = section;
     window.__gallerySection = section;
-    window.__galleryPhotos = section.photos.filter(p => p.typeId === selectedPhotoType);
     const titleEl = document.getElementById('gallery-title');
     if (titleEl) titleEl.textContent = pt?.name || '';
     renderGalleryGrid(section);
@@ -1139,16 +1139,25 @@
           const det = new BarcodeDetector({
             formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417']
           });
+          detectFailCount = 0;
           scanTimer = setInterval(async () => {
             if (scanCooldown || video.readyState < 2 || !video.videoWidth) return;
             try {
               const codes = await det.detect(video);
+              detectFailCount = 0;
               if (pendingScanCode) {
                 updateTrackingUI(codes.some(c => c.rawValue === pendingScanCode));
               } else {
                 showBarcodeOverlays(codes, video.videoWidth, video.videoHeight);
               }
-            } catch(e) {}
+            } catch(e) {
+              detectFailCount++;
+              if (detectFailCount > 10) {
+                clearInterval(scanTimer); scanTimer = null;
+                if (typeof ZXing !== 'undefined') initZXingScanner(video);
+                else showToast('Сканер не поддерживается — используйте фото');
+              }
+            }
           }, 300);
         } catch(e) {
           if (typeof ZXing !== 'undefined') initZXingScanner(video);
@@ -1199,6 +1208,7 @@
     const wrap = container.parentElement;
     const cw = wrap.clientWidth;
     const ch = wrap.clientHeight;
+    if (!cw || !ch) return;
     const scaleX = cw / vw;
     const scaleY = ch / vh;
     let html = '';
@@ -1320,13 +1330,27 @@
     }
   }
 
+  function toggleTorch() {
+    const btn = document.getElementById('ke-cam-torch');
+    const track = videoStream?.getVideoTracks()[0];
+    if (!track) return;
+    torchOn = !torchOn;
+    track.applyConstraints({ advanced: [{ torch: torchOn }] }).catch(() => {
+      torchOn = !torchOn;
+      showToast('Фонарик не поддерживается');
+    });
+    btn.classList.toggle('on', torchOn);
+  }
+
   function closeKEModal() {
+    torchOn = false;
     const modal = document.getElementById('ke-camera-modal');
     const video = document.getElementById('ke-cam-video');
     const overlays = document.getElementById('ke-cam-overlays');
     const confirmBar = document.getElementById('ke-cam-confirm');
     const status = document.getElementById('ke-cam-status');
     const frame = document.getElementById('ke-cam-frame');
+    document.getElementById('ke-cam-torch').classList.remove('on');
     pendingScanCode = null;
     if (overlays) overlays.innerHTML = '';
     if (confirmBar) confirmBar.classList.add('hidden');
@@ -1374,33 +1398,6 @@
     renderSectionPhotos(section);
     renderPhotoTypes(section);
     closeKEModal();
-  }
-
-  function onScanDetected(code) {
-    if (scanCooldown) return;
-    const clean = code.replace(/[^0-9]/g, '');
-    if (clean.length !== 13 && clean.length !== 4) {
-      return;
-    }
-    if (lastScannedCode === code) return;
-    lastScannedCode = code;
-
-    scanCooldown = true;
-    setTimeout(() => { scanCooldown = false; lastScannedCode = null; }, 2000);
-
-    if (navigator.vibrate) navigator.vibrate(60);
-    beepFeedback();
-
-    const frame = document.getElementById('ke-frame');
-    const detectedBox = document.getElementById('ke-detected-code');
-    const codeText = document.getElementById('ke-code-text');
-
-    if (frame) frame.classList.add('detected');
-    if (detectedBox) detectedBox.classList.add('detected');
-    if (codeText) codeText.textContent = code;
-
-    showToast('✓ ' + code);
-    addKECode(code);
   }
 
   function beepFeedback() {
@@ -1456,21 +1453,6 @@
     });
   }
 
-  function removeKECode(index) {
-    if (!currentReport || !currentReport.keCodes) return;
-    currentReport.keCodes.splice(index, 1);
-    saveReport();
-    renderKEList();
-  }
-
-  function stopScanner() {
-    if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
-    if (codeReader) { codeReader.reset(); codeReader = null; }
-    if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
-    if (window._zxingCv) { window._zxingCv.remove(); window._zxingCv = null; }
-    if (window._zxingReader) { window._zxingReader.reset(); window._zxingReader = null; }
-  }
-
   function finishReport() {
     currentReport.status = 'completed';
     currentReport.completedAt = new Date().toISOString();
@@ -1505,7 +1487,7 @@
     const fmt = currentReport.objectType.toUpperCase();
     const obj = currentReport.reportName || '';
     const tech = currentReport.technician || '';
-    return `${fmt} ${obj} ЧЛ ТО ${fmt} (${tech}) .xlsx`;
+    return `${fmt} ${obj} ЧЛ ТО ${fmt} (${tech}).xlsx`;
   }
 
   function generateXlsxData() {
@@ -1782,8 +1764,6 @@
   }
 
   safeAddEvent('input-object-name', 'input', updateConfigButton);
-  safeAddEvent('install-prompt', 'click', () => {});
-  safeAddEvent('ios-install', 'click', () => {});
 
   init();
 })();
