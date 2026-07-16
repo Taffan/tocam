@@ -940,8 +940,7 @@ body {
   min-width: 28px;
 }
 
-.ke-sn-column .photo-type-hint-btn,
-.ke-sn-column .ke-gallery-btn {
+.ke-sn-column .photo-type-hint-btn {
   width: 20px;
   height: 20px;
   font-size: 10px;
@@ -1030,33 +1029,6 @@ body {
 }
 
 .photo-type-item.hint-open .photo-type-hint-btn {
-  background: var(--primary);
-  color: white;
-}
-
-.ke-gallery-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 2px solid var(--primary);
-  background: var(--surface);
-  color: var(--primary);
-  cursor: pointer;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  padding: 0;
-}
-
-.ke-gallery-btn svg {
-  width: 14px;
-  height: 14px;
-}
-
-.ke-gallery-btn:hover,
-.ke-gallery-btn:active {
   background: var(--primary);
   color: white;
 }

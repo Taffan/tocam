@@ -651,9 +651,6 @@
               <div class="photo-type-name">${pt.filename}</div>
             </div>
             ${hasPhoto ? '<div class="photo-type-tap-hint">✓</div>' : ''}
-            <button class="ke-gallery-btn" title="Выбрать из галереи">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-            </button>
             ${hint ? `<button class="photo-type-hint-btn" data-hint="${hint.replace(/"/g, '&quot;')}" title="Подсказка">?</button>` : ''}
           </div>`;
       }
@@ -670,9 +667,6 @@
               <div class="photo-type-name">${pt.filename}</div>
             </div>
             ${hasPhoto ? '<div class="photo-type-tap-hint">✓</div>' : ''}
-            <button class="ke-gallery-btn" title="Выбрать из галереи">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-            </button>
             ${hint ? `<button class="photo-type-hint-btn" data-hint="${hint.replace(/"/g, '&quot;')}" title="Подсказка">?</button>` : ''}
           </div>`;
       }
@@ -690,8 +684,33 @@
 
     container.innerHTML = html;
 
+    let longPressTimer = null;
+    let longPressActivated = false;
+
+    function clearLongPress() {
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    }
+    document.addEventListener('pointerup', clearLongPress);
+    document.addEventListener('pointercancel', clearLongPress);
+
     container.querySelectorAll('.photo-type-item').forEach(item => {
+      item.addEventListener('pointerdown', () => {
+        longPressActivated = false;
+        longPressTimer = setTimeout(() => {
+          longPressActivated = true;
+          const typeId = item.dataset.typeId;
+          selectedPhotoType = typeId;
+          container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
+          item.classList.add('selected');
+          document.getElementById('gallery-input').click();
+        }, 3000);
+      });
+
       item.addEventListener('click', (e) => {
+        if (longPressActivated) {
+          longPressActivated = false;
+          return;
+        }
         const typeId = item.dataset.typeId;
         const pt = section.photoTypes.find(t => t.id === typeId);
         selectedPhotoType = typeId;
@@ -725,16 +744,6 @@
           popup.textContent = btn.dataset.hint;
           item.appendChild(popup);
         }
-      });
-    });
-
-    container.querySelectorAll('.ke-gallery-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const item = btn.closest('.photo-type-item');
-        if (!item) return;
-        selectedPhotoType = item.dataset.typeId;
-        document.getElementById('gallery-input').click();
       });
     });
 
@@ -1338,68 +1347,6 @@
     currentReport.keCodes.splice(index, 1);
     saveReport();
     renderKEList();
-  }
-
-  function renderKESectionList(section) {
-    const container = document.getElementById('ke-items');
-    const keTypes = section.photoTypes.filter(pt => pt.isKE);
-    const kePhotos = section.photos.filter(p => keTypes.some(kt => kt.id === p.typeId));
-
-    if (!kePhotos.length) {
-      container.innerHTML = '<div class="empty-state"><div class="empty-state-text">Нет фото КЕ</div></div>';
-      return;
-    }
-
-    container.innerHTML = kePhotos.map((p, i) => {
-      const type = keTypes.find(kt => kt.id === p.typeId);
-      return `
-        <div class="ke-item">
-          <div class="ke-item-code">${type?.name || 'КЕ'}</div>
-          <img class="ke-item-photo" src="${p.dataUrl}" alt="">
-        </div>
-      `;
-    }).join('');
-  }
-
-  function handleKEGallery(e) {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-
-    const section = currentReport.sections[currentSectionIndex];
-    const keTypes = section.photoTypes.filter(pt => pt.isKE);
-
-    files.forEach((file, idx) => {
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const maxSize = getPhotoMaxSize();
-          let w = img.width, h = img.height;
-          if (w > h && w > maxSize) { h = h * maxSize / w; w = maxSize; }
-          else if (h > maxSize) { w = w * maxSize / h; h = maxSize; }
-          canvas.width = w; canvas.height = h;
-          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-
-          const availableType = keTypes.find(kt => !section.photos.some(p => p.typeId === kt.id));
-          if (availableType) {
-            section.photos.push({
-              id: generateId(),
-              typeId: availableType.id,
-              dataUrl: canvas.toDataURL('image/jpeg', 0.85),
-              timestamp: new Date().toISOString()
-            });
-            renderKESectionList(section);
-            renderPhotoTypes(section);
-            scheduleAutoSave();
-          }
-        };
-        img.src = evt.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
-
-    e.target.value = '';
   }
 
   function stopScanner() {
