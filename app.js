@@ -787,7 +787,7 @@
           selectedPhotoType = longPressTypeId;
           container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
           item.classList.add('selected');
-        }, 3000);
+        }, 1500);
       }
 
       function onPressEnd(e) {
