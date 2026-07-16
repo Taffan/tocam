@@ -801,8 +801,14 @@
       item.addEventListener('pointerdown', onPressStart);
       item.addEventListener('touchstart', onPressStart);
       item.addEventListener('pointerup', onPressEnd);
-      item.addEventListener('touchend', () => {
+      item.addEventListener('touchend', (e) => {
         clearTimeout(longPressTimer);
+        if (longPressActivated) {
+          longPressActivated = false;
+          e.preventDefault();
+          document.getElementById('gallery-input').click();
+          return;
+        }
         longPressTimer = null;
       });
       item.addEventListener('touchcancel', () => { clearTimeout(longPressTimer); longPressActivated = false; });
