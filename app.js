@@ -39,6 +39,7 @@
   let scanTimer = null;
   let pendingScanCode = null;
   let deferredPrompt = null;
+  let _updateBubble = null;
   let pageHistory = ['home'];
   let currentPage = 'home';
   let cachedZipBlob = null;
@@ -50,6 +51,7 @@
       setupEventListeners();
       setDefaultDate();
       setupInstallPrompt();
+      checkForUpdates();
       showPage('home');
     }).catch(() => {
       db = createDummyDB();
@@ -148,6 +150,35 @@
     }
   }
 
+  function checkForUpdates() {
+    const t = Date.now();
+    fetch('version.json?t=' + t, { cache: 'no-cache' })
+      .then(r => r.json())
+      .then(data => {
+        const localVer = parseInt(localStorage.getItem('appVersion') || '0', 10);
+        if (data.version > localVer) {
+          _updateBubble = data.version;
+          document.getElementById('update-bubble').classList.remove('hidden');
+          document.getElementById('menu-update').classList.remove('hidden');
+        }
+      })
+      .catch(() => {});
+  }
+
+  function performUpdate() {
+    document.getElementById('menu-dropdown').classList.add('hidden');
+    showToast('Обновление...');
+    if ('caches' in window) {
+      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
+        localStorage.setItem('appVersion', String(_updateBubble));
+        location.reload();
+      });
+    } else {
+      localStorage.setItem('appVersion', String(_updateBubble));
+      location.reload();
+    }
+  }
+
   function setupEventListeners() {
     document.getElementById('header-back').addEventListener('click', goBack);
     document.getElementById('header-menu').addEventListener('click', (e) => {
@@ -160,6 +191,7 @@
       document.getElementById('menu-dropdown').classList.add('hidden');
       showPage('settings');
     });
+    document.getElementById('menu-update').addEventListener('click', performUpdate);
     document.getElementById('menu-install').addEventListener('click', async () => {
       document.getElementById('menu-dropdown').classList.add('hidden');
       if (deferredPrompt) {

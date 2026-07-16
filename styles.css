@@ -125,6 +125,66 @@ body {
   height: 24px;
 }
 
+/* Update bubble */
+.update-bubble {
+  position: absolute;
+  top: 44px;
+  right: 4px;
+  z-index: 200;
+  animation: updateBubbleIn 0.4s ease;
+}
+
+.update-bubble.hidden {
+  display: none;
+}
+
+.update-bubble-text {
+  background: #fff;
+  color: #000;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+  border: 2px solid #000;
+  position: relative;
+  z-index: 1;
+}
+
+.update-bubble-tail {
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border: 2px solid #000;
+  border-right: none;
+  border-bottom: none;
+  position: absolute;
+  top: -8px;
+  right: 16px;
+  transform: rotate(45deg);
+  z-index: 0;
+}
+
+@keyframes updateBubbleIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.menu-item-update {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.menu-item-update svg {
+  animation: updateSpin 2s linear infinite;
+}
+
+@keyframes updateSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .menu-dropdown {
   position: fixed;
   inset: 0;
@@ -218,6 +278,7 @@ body {
   gap: 4px;
   flex-shrink: 0;
   margin-left: auto;
+  position: relative;
 }
 
 .header-help {
@@ -2387,4 +2448,17 @@ body {
 .dark .header-help {
   background: transparent;
   border-color: #DC0000;
+}
+
+.dark .update-bubble-text {
+  background: var(--surface);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.dark .update-bubble-tail {
+  background: var(--surface);
+  border-color: var(--border);
+  border-right: none;
+  border-bottom: none;
 }
