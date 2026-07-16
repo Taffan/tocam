@@ -1,24 +1,14 @@
 (function() {
   'use strict';
 
-  try {
-    if (navigator.serviceWorker) {
-      navigator.serviceWorker.getRegistrations().then(regs => {
-        const hadRegs = regs.length > 0;
-        regs.forEach(reg => reg.unregister());
-        if (hadRegs && !sessionStorage.getItem('sw_killed')) {
-          sessionStorage.setItem('sw_killed', '1');
-          window.location.reload();
-          return;
-        }
-      }).catch(() => {});
+  const APP_VERSION = 1.0;
+
+  if ('serviceWorker' in navigator) {
+    const stored = localStorage.getItem('appVersion');
+    if (stored && parseInt(stored, 10) < APP_VERSION) {
+      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).catch(() => {});
     }
-    if (window.caches) {
-      caches.keys().then(names => {
-        names.forEach(name => caches.delete(name));
-      }).catch(() => {});
-    }
-  } catch(e) {}
+  }
 
   const DB_NAME = 'PhotoReportsDB_v6';
   const STORE_NAME = 'reports';
@@ -219,6 +209,11 @@
   }
 
   if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data === 'SW_UPDATED') {
+        showUpdateUI();
+      }
+    });
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (!_updatePendingReload) return;
       if ('caches' in window) {
@@ -234,6 +229,39 @@
   }
 
   function setupEventListeners() {
+    if (window.history && window.history.pushState) {
+      history.pushState(null, '');
+      window.addEventListener('popstate', () => {
+        const menu = document.getElementById('menu-dropdown');
+        const gallery = document.getElementById('photo-gallery-modal');
+        const preview = document.getElementById('photo-preview-modal');
+        const scanner = document.getElementById('ke-camera-modal');
+        if (menu && !menu.classList.contains('hidden')) {
+          menu.classList.add('hidden');
+          history.pushState(null, '');
+          return;
+        }
+        if (gallery && !gallery.classList.contains('hidden')) {
+          closeGallery();
+          history.pushState(null, '');
+          return;
+        }
+        if (preview && !preview.classList.contains('hidden')) {
+          closePreview();
+          history.pushState(null, '');
+          return;
+        }
+        if (scanner && !scanner.classList.contains('hidden')) {
+          closeKEModal();
+          history.pushState(null, '');
+          return;
+        }
+        if (pageHistory.length > 1) {
+          goBack();
+          history.pushState(null, '');
+        }
+      });
+    }
     document.getElementById('header-back').addEventListener('click', goBack);
     document.getElementById('header-menu').addEventListener('click', (e) => {
       document.getElementById('menu-dropdown').classList.toggle('hidden');
@@ -1322,18 +1350,15 @@
     if (isNewCode && scanCooldown) return;
     const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
     if (!pt?.isSN && !isKECode(code)) return;
+    if (isNewCode) {
+      selectBarcodeCode(code);
+      return;
+    }
     const frame = document.getElementById('ke-cam-frame');
     const status = document.getElementById('ke-cam-status');
     if (frame) frame.classList.add('detected');
     const label = pt?.isSN ? 'СН' : 'КЕ';
     if (status) { status.textContent = `✓ ${label}: ${code}`; status.className = 'ke-cam-status found'; }
-    pendingScanCode = code;
-    if (isNewCode) {
-      if (navigator.vibrate) navigator.vibrate(60);
-      beepFeedback();
-      scanCooldown = true;
-      setTimeout(() => { scanCooldown = false; }, 2000);
-    }
   }
 
   function toggleTorch() {
