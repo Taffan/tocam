@@ -1,7 +1,7 @@
 (function() {
   'use strict';
 
-  const APP_VERSION = 1.0;
+  const APP_VERSION = '1.0';
 
   if ('serviceWorker' in navigator) {
     const stored = localStorage.getItem('appVersion');
@@ -230,6 +230,7 @@
 
   function setupEventListeners() {
     if (window.history && window.history.pushState) {
+      history.pushState(null, '');
       window.addEventListener('popstate', () => {
         const menu = document.getElementById('menu-dropdown');
         const gallery = document.getElementById('photo-gallery-modal');
