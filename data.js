@@ -301,7 +301,11 @@ function generateSections(type, equipmentCounts) {
         numSuffix = '';
       }
 
-      const photoTypes = getPhotoTypes(eq.id);
+      const photoTypes = getPhotoTypes(eq.id).filter(pt => {
+        if (type === 'mk' && eq.id === 'kassa' && (pt.id === 'ke_monitor' || pt.id === 'sn_monitor')) return false;
+        if (type === 'mm' && eq.id === 'kassa_zona' && (pt.id === 'ke_monitor' || pt.id === 'sn_monitor')) return false;
+        return true;
+      });
       const formattedTypes = photoTypes.map(pt => {
         let filename;
 
