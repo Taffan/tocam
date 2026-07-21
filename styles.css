@@ -140,9 +140,12 @@ body {
 }
 
 .update-bubble-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   background: #fff;
   color: #000;
-  padding: 8px 14px;
+  padding: 8px 8px 8px 14px;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 700;
@@ -165,6 +168,25 @@ body {
   right: 16px;
   transform: rotate(45deg);
   z-index: 0;
+}
+
+.update-bubble-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  color: #999;
+  flex-shrink: 0;
+}
+
+.update-bubble-close:hover {
+  background: #eee;
+  color: #333;
 }
 
 @keyframes updateBubbleIn {

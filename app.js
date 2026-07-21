@@ -163,7 +163,7 @@
   }
 
   function showUpdateUI(newVersion) {
-    _updateBubble = newVersion || 1;
+    _updateBubble = newVersion;
     document.getElementById('update-bubble').classList.remove('hidden');
     document.getElementById('menu-update').classList.remove('hidden');
   }
@@ -203,22 +203,39 @@
       .catch(() => {});
   }
 
+  function hideUpdateUI() {
+    document.getElementById('update-bubble').classList.add('hidden');
+    document.getElementById('menu-update').classList.add('hidden');
+    _updateBubble = null;
+  }
+
   function performUpdate() {
+    if (!navigator.onLine) {
+      showToast('Обновление недоступно без интернета');
+      return;
+    }
     document.getElementById('menu-dropdown').classList.add('hidden');
     showToast('Обновление...');
     _updatePendingReload = true;
+    const doReload = (ver) => {
+      localStorage.setItem('appVersion', String(ver || 1));
+      location.reload();
+    };
     if (_swReg && _swReg.waiting) {
       _swReg.waiting.postMessage('SKIP_WAITING');
     } else {
-      if ('caches' in window) {
-        caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
-          localStorage.setItem('appVersion', String(_updateBubble || 1));
-          location.reload();
-        });
-      } else {
-        localStorage.setItem('appVersion', String(_updateBubble || 1));
-        location.reload();
-      }
+      const cleanup = () => {
+        if ('caches' in window) {
+          caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
+            if (_updateBubble) doReload(_updateBubble);
+            else fetch('version.json?t=' + Date.now(), { cache: 'no-cache' }).then(r => r.json()).then(d => doReload(d.version)).catch(() => doReload(1));
+          });
+        } else {
+          if (_updateBubble) doReload(_updateBubble);
+          else fetch('version.json?t=' + Date.now(), { cache: 'no-cache' }).then(r => r.json()).then(d => doReload(d.version)).catch(() => doReload(1));
+        }
+      };
+      cleanup();
     }
   }
 
@@ -285,6 +302,10 @@
       showPage('settings');
     });
     document.getElementById('menu-update').addEventListener('click', performUpdate);
+    document.getElementById('update-bubble-close').addEventListener('click', (e) => {
+      e.stopPropagation();
+      hideUpdateUI();
+    });
     document.getElementById('menu-install').addEventListener('click', async () => {
       document.getElementById('menu-dropdown').classList.add('hidden');
       if (deferredPrompt) {
