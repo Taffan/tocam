@@ -1,16 +1,33 @@
 (function() {
   'use strict';
 
-  const APP_VERSION = '1.0.5.3';
+  let APP_VERSION = '1.0';
 
-  if ('serviceWorker' in navigator) {
-    const stored = localStorage.getItem('appVersion');
-    if (stored && stored !== APP_VERSION) {
-      navigator.serviceWorker.getRegistration().then(reg => {
-        if (reg) reg.update();
-      }).catch(() => {});
-    }
-  }
+  fetch('version.json?t=' + Date.now(), { cache: 'no-cache' })
+    .then(r => r.json())
+    .then(data => {
+      APP_VERSION = String(data.version || APP_VERSION);
+      if ('serviceWorker' in navigator) {
+        const stored = localStorage.getItem('appVersion');
+        if (stored && stored !== APP_VERSION) {
+          navigator.serviceWorker.getRegistration().then(reg => {
+            if (reg) reg.update();
+          }).catch(() => {});
+        }
+      }
+      const verEl = document.getElementById('settings-version-number');
+      if (verEl) verEl.textContent = APP_VERSION;
+    })
+    .catch(() => {
+      if ('serviceWorker' in navigator) {
+        const stored = localStorage.getItem('appVersion');
+        if (stored && stored !== APP_VERSION) {
+          navigator.serviceWorker.getRegistration().then(reg => {
+            if (reg) reg.update();
+          }).catch(() => {});
+        }
+      }
+    });
 
   const DB_NAME = 'PhotoReportsDB_v6';
   const STORE_NAME = 'reports';
@@ -422,9 +439,6 @@
         saveSetting('technician', settingsTechInput.value);
       });
     }
-
-    const verEl = document.getElementById('settings-version-number');
-    if (verEl) verEl.textContent = APP_VERSION;
 
     loadSettings();
   }
