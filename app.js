@@ -1,33 +1,28 @@
 (function() {
   'use strict';
 
-  let APP_VERSION = '1.0';
+  let APP_VERSION = localStorage.getItem('appVersion') || '1.0';
+
+  const verEl = document.getElementById('settings-version-number');
+  if (verEl) verEl.textContent = APP_VERSION;
 
   fetch('version.json?t=' + Date.now(), { cache: 'no-cache' })
     .then(r => r.json())
     .then(data => {
-      APP_VERSION = String(data.version || APP_VERSION);
-      if ('serviceWorker' in navigator) {
-        const stored = localStorage.getItem('appVersion');
-        if (stored && stored !== APP_VERSION) {
+      const remoteVer = String(data.version || APP_VERSION);
+      if (remoteVer !== APP_VERSION) {
+        APP_VERSION = remoteVer;
+        localStorage.setItem('appVersion', APP_VERSION);
+        if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistration().then(reg => {
             if (reg) reg.update();
           }).catch(() => {});
         }
       }
-      const verEl = document.getElementById('settings-version-number');
-      if (verEl) verEl.textContent = APP_VERSION;
+      const verEl2 = document.getElementById('settings-version-number');
+      if (verEl2) verEl2.textContent = APP_VERSION;
     })
-    .catch(() => {
-      if ('serviceWorker' in navigator) {
-        const stored = localStorage.getItem('appVersion');
-        if (stored && stored !== APP_VERSION) {
-          navigator.serviceWorker.getRegistration().then(reg => {
-            if (reg) reg.update();
-          }).catch(() => {});
-        }
-      }
-    });
+    .catch(() => {});
 
   const DB_NAME = 'PhotoReportsDB_v6';
   const STORE_NAME = 'reports';
