@@ -6,7 +6,9 @@
   if ('serviceWorker' in navigator) {
     const stored = localStorage.getItem('appVersion');
     if (stored && stored !== APP_VERSION) {
-      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).catch(() => {});
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg) reg.update();
+      }).catch(() => {});
     }
   }
 
