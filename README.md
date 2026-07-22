@@ -1,12 +1,12 @@
 # Фото Отчёты / Photo Reports
 
-PWA for creating technical maintenance reports for Magazin retail stores.
+PWA for creating technical maintenance reports for Magnit retail stores.
 
 **[RU]**
-PWA для создания отчётов о техническом обслуживании торговых точек сети «Магазин».
+PWA для создания отчётов о техническом обслуживании торговых точек сети «Магнит».
 
 **[EN]**
-PWA for creating technical maintenance reports for Magazin retail stores.
+PWA for creating technical maintenance reports for Magnit retail stores.
 
 ---
 
