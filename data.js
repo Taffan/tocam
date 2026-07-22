@@ -63,11 +63,10 @@ const TYPE_CONFIGS = {
     label: 'Гипермаркет',
     separator: ' # ',
     equipment: [
+      { id: 'server', name: 'Серверная', icon: 'server' },
       { id: 'kassa_zona', name: 'Кассовая зона', icon: 'kassa' },
       { id: 'kso', name: 'КСО', icon: 'kso' },
-      { id: 'td', name: 'ТД', icon: 'td' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
-      { id: 'uks', name: 'УКС', icon: 'uks' },
       { id: 'vesi_napolnie', name: 'Весы напольные', icon: 'vesi' },
       { id: 'vesi_samoobsl', name: 'Весы самообслуживания', icon: 'vesi' },
       { id: 'vesi_pechat', name: 'Весы с печатью', icon: 'vesi' },
@@ -324,6 +323,16 @@ const PHOTO_TYPES = {
       { id: 'sn_printer', name: 'СН Принтер', filename: 'СН Принтер', hint: 'Текст маркировок читаемым; Изображение четким; Наклейка + оборудование видно.' },
       { id: 'sn_skaner_a4', name: 'СН Сканер А4', filename: 'СН Сканер А4', hint: 'Текст маркировок читаемым; Изображение четким; Наклейка + оборудование видно.' }
     ]
+  },
+  server: {
+    photo: [
+      { id: 'obshiy_vid_1', name: 'Общий вид серверной стойки/шкафа (сторона 1)', filename: 'Общий вид серверной стойки/шкафа (сторона 1)', multi: true, hint: 'Видна серверная стойка/шкаф. Четкое изображение.' },
+      { id: 'obshiy_vid_2', name: 'Общий вид серверной стойки/шкафа (сторона 2)', filename: 'Общий вид серверной стойки/шкафа (сторона 2)', multi: true, hint: 'Видна серверная стойка/шкаф. Четкое изображение.' },
+      { id: 'obshiy_vid_3', name: 'Общий вид серверной стойки/шкафа (сторона 3)', filename: 'Общий вид серверной стойки/шкафа (сторона 3)', multi: true, hint: 'Видна серверная стойка/шкаф. Четкое изображение.' },
+      { id: 'obshiy_vid_4', name: 'Общий вид серверной стойки/шкафа (сторона 4)', filename: 'Общий вид серверной стойки/шкафа (сторона 4)', multi: true, hint: 'Видна серверная стойка/шкаф. Четкое изображение.' }
+    ],
+    ke: [],
+    sn: []
   }
 };
 
@@ -360,7 +369,7 @@ function generateSections(type, equipmentCounts) {
         sectionName = `${eq.name} ${n}`;
         sectionPrefix = eq.name;
         numSuffix = n;
-      } else if (['kassa_zona', 'kso', 'vesi_napolnie', 'vesi_samoobsl', 'vesi_pechat', 'mp', 'stp', 'rmd'].includes(eq.id)) {
+      } else if (['kassa_zona', 'kso', 'vesi_napolnie', 'vesi_samoobsl', 'vesi_pechat', 'mp', 'stp', 'rmd', 'server'].includes(eq.id)) {
         sectionName = `${eq.name} ${n}`;
         sectionPrefix = eq.name;
         numSuffix = n;
@@ -443,6 +452,7 @@ const SECTION_ICONS = {
   mp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 9V6a6 6 0 1112 0v3"/><rect x="3" y="9" width="18" height="12" rx="1"/></svg>`,
   stp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 18V4a1 1 0 011-1h10a1 1 0 011 1v14"/><rect x="3" y="16" width="18" height="4" rx="1"/><path d="M8 8h8M8 11h8"/></svg>`,
   rmd: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><circle cx="8" cy="10" r="2"/><circle cx="16" cy="10" r="2"/></svg>`,
+  server: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M4 8h16"/><path d="M4 16h16"/><circle cx="8" cy="5" r="1" fill="currentColor"/><circle cx="8" cy="13" r="1" fill="currentColor"/></svg>`,
   prochee: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>`
 };
 
@@ -458,5 +468,6 @@ const EQUIPMENT_ICONS = {
   vesi_pechat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>`,
   mp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 9V6a6 6 0 1112 0v3"/><rect x="3" y="9" width="18" height="12" rx="1"/></svg>`,
   stp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 18V4a1 1 0 011-1h10a1 1 0 011 1v14"/><rect x="3" y="16" width="18" height="4" rx="1"/><path d="M8 8h8M8 11h8"/></svg>`,
-  rmd: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><circle cx="8" cy="10" r="2"/><circle cx="16" cy="10" r="2"/></svg>`
+  rmd: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><circle cx="8" cy="10" r="2"/><circle cx="16" cy="10" r="2"/></svg>`,
+  server: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M4 8h16"/><path d="M4 16h16"/><circle cx="8" cy="5" r="1" fill="currentColor"/><circle cx="8" cy="13" r="1" fill="currentColor"/></svg>`
 };

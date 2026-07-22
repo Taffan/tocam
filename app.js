@@ -51,6 +51,9 @@
     if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
     longPressActivated = false;
   }
+  function clearLongPressTimer() {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+  }
   let _swReg = null;
   let _updatePendingReload = false;
   let pageHistory = ['home'];
@@ -329,7 +332,7 @@
       else showPage('help');
     });
 
-    document.addEventListener('pointerup', clearLongPress);
+    document.addEventListener('pointerup', clearLongPressTimer);
     document.addEventListener('pointercancel', clearLongPress);
     document.addEventListener('touchend', clearLongPress);
     document.addEventListener('touchcancel', clearLongPress);
@@ -867,7 +870,7 @@
 
       item.addEventListener('contextmenu', (e) => e.preventDefault());
 
-      item.addEventListener('touchstart', () => {
+      item.addEventListener('pointerdown', () => {
         longPressActivated = false;
         longPressTypeId = item.dataset.typeId;
         longPressTimer = setTimeout(() => {
@@ -877,24 +880,25 @@
           container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
           item.classList.add('selected');
         }, 1500);
-      }, { passive: true });
+      });
 
-      item.addEventListener('touchmove', () => {
+      item.addEventListener('pointermove', () => {
         clearTimeout(longPressTimer);
         longPressTimer = null;
         longPressActivated = false;
-      }, { passive: true });
+      });
 
-      item.addEventListener('touchend', () => {
+      item.addEventListener('pointerup', (e) => {
         clearTimeout(longPressTimer);
         longPressTimer = null;
         if (longPressActivated) {
           longPressActivated = false;
+          e.preventDefault();
           document.getElementById('gallery-input').click();
         }
       });
 
-      item.addEventListener('touchcancel', () => {
+      item.addEventListener('pointercancel', () => {
         clearTimeout(longPressTimer);
         longPressTimer = null;
         longPressActivated = false;
@@ -1654,6 +1658,7 @@
       'td': 'ТД',
       'tsd': 'ТСД',
       'uks': 'Универсальный кассовый стол (УКС)',
+      'server': 'Серверная',
       'vesi_napolnie': 'Весы напольные',
       'vesi_samoobsl': 'Весы самообслуживания',
       'vesi_pechat': 'Весы с печатью',
