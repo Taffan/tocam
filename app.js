@@ -865,48 +865,64 @@
 
     container.innerHTML = html;
 
-    container.querySelectorAll('.photo-type-item').forEach(item => {
-      let _preventClick = false;
+      container.querySelectorAll('.photo-type-item').forEach(item => {
+        let _preventClick = false;
 
-      item.addEventListener('contextmenu', (e) => e.preventDefault());
+        item.addEventListener('contextmenu', (e) => e.preventDefault());
 
-      item.addEventListener('pointerdown', () => {
-        longPressActivated = false;
-        longPressTypeId = item.dataset.typeId;
-        longPressTimer = setTimeout(() => {
-          longPressActivated = true;
-          _preventClick = true;
-          selectedPhotoType = longPressTypeId;
-          container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
-          item.classList.add('selected');
-        }, 1500);
-      });
-
-      item.addEventListener('pointermove', () => {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-        longPressActivated = false;
-      });
-
-      item.addEventListener('pointerup', (e) => {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-        if (longPressActivated) {
+        function startLongPress() {
+          if (longPressTimer) return;
           longPressActivated = false;
-          e.preventDefault();
-          document.getElementById('gallery-input').click();
+          longPressTypeId = item.dataset.typeId;
+          longPressTimer = setTimeout(() => {
+            longPressActivated = true;
+            _preventClick = true;
+            selectedPhotoType = longPressTypeId;
+            container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
+            item.classList.add('selected');
+          }, 1500);
         }
-      });
 
-      item.addEventListener('pointercancel', () => {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-        longPressActivated = false;
-      });
+        function cancelLongPress() {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+          longPressActivated = false;
+        }
 
-      item.addEventListener('click', (e) => {
-        if (_preventClick) { _preventClick = false; return; }
-        const typeId = item.dataset.typeId;
+        item.addEventListener('pointerdown', startLongPress);
+        item.addEventListener('touchstart', startLongPress, { passive: true });
+
+        item.addEventListener('pointermove', cancelLongPress);
+        item.addEventListener('touchmove', cancelLongPress, { passive: true });
+
+        item.addEventListener('pointerup', () => {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+          if (longPressActivated) {
+            longPressActivated = false;
+            document.getElementById('gallery-label').click();
+          }
+        });
+        item.addEventListener('touchend', () => {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+          if (longPressActivated) {
+            longPressActivated = false;
+            document.getElementById('gallery-label').click();
+          }
+        });
+
+        item.addEventListener('pointercancel', cancelLongPress);
+        item.addEventListener('touchcancel', cancelLongPress);
+
+        item.addEventListener('click', (e) => {
+          if (_preventClick) {
+            _preventClick = false;
+            e.preventDefault();
+            document.getElementById('gallery-label').click();
+            return;
+          }
+          const typeId = item.dataset.typeId;
         const pt = section.photoTypes.find(t => t.id === typeId);
         selectedPhotoType = typeId;
         container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
