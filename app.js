@@ -332,34 +332,6 @@
       else showPage('help');
     });
 
-    // iOS gallery test buttons
-    document.getElementById('test-gallery-1')?.addEventListener('click', (e) => {
-      e.preventDefault();
-      document.getElementById('gallery-input').click();
-    });
-    document.getElementById('test-gallery-2')?.addEventListener('click', (e) => {
-      e.preventDefault();
-      document.getElementById('gallery-label')?.click();
-    });
-    document.getElementById('test-gallery-3')?.addEventListener('click', (e) => {
-      e.preventDefault();
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.multiple = true;
-      input.style.position = 'fixed';
-      input.style.left = '0';
-      input.style.top = '0';
-      input.style.opacity = '0';
-      input.style.width = '100%';
-      input.style.height = '100%';
-      input.style.zIndex = '9999';
-      input.addEventListener('change', handleGallerySelect);
-      document.body.appendChild(input);
-      setTimeout(() => input.click(), 50);
-      setTimeout(() => { if (input.parentNode) input.parentNode.removeChild(input); }, 120000);
-    });
-
     document.addEventListener('pointerup', clearLongPressTimer);
     document.addEventListener('pointercancel', clearLongPress);
     document.addEventListener('touchend', clearLongPress);
@@ -912,7 +884,6 @@
             selectedPhotoType = longPressTypeId;
             container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
             item.classList.add('selected');
-            requestAnimationFrame(() => showToast('Отпустите и нажмите ещё раз для выбора из галереи'));
           }, 1500);
         }
 
@@ -923,10 +894,10 @@
           _preventClick = false;
         }
 
-        item.addEventListener('pointerdown', startLongPress);
+        item.addEventListener('pointerdown', startLongPress, { passive: true });
         item.addEventListener('touchstart', startLongPress, { passive: true });
 
-        item.addEventListener('pointermove', cancelLongPress);
+        item.addEventListener('pointermove', cancelLongPress, { passive: true });
         item.addEventListener('touchmove', cancelLongPress, { passive: true });
 
         item.addEventListener('pointerup', () => {
@@ -942,7 +913,7 @@
           longPressTimer = null;
           if (longPressActivated) {
             longPressActivated = false;
-            openGallery();
+            document.getElementById('gallery-input').click();
           }
         });
 
@@ -953,7 +924,6 @@
           if (_preventClick) {
             _preventClick = false;
             e.preventDefault();
-            openGallery();
             return;
           }
           const typeId = item.dataset.typeId;
