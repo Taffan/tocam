@@ -491,22 +491,9 @@
     loadSettings();
   }
 
-  // restore gallery-input to hidden state after use
-  function hideGalleryInput() {
-    var inp = document.getElementById('gallery-input');
-    if (!inp) return;
-    inp.style.width = '1px';
-    inp.style.height = '1px';
-    inp.style.left = '-9999px';
-    inp.style.top = '-9999px';
-    inp.style.opacity = '0';
-    inp.style.zIndex = '';
-  }
   function openGallery() {
     document.getElementById('gallery-input').click();
   }
-  document.getElementById('gallery-input').addEventListener('change', hideGalleryInput);
-  document.getElementById('gallery-input').addEventListener('click', function() { setTimeout(hideGalleryInput, 2000); });
 
   function showPage(pageName) {
     document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
@@ -915,13 +902,8 @@
 
         item.addEventListener('contextmenu', (e) => e.preventDefault());
 
-        let longPressX = 0, longPressY = 0;
-
-        function startLongPress(e) {
+        function startLongPress() {
           if (longPressTimer) return;
-          const p = e.touches ? e.touches[0] : e;
-          longPressX = p.clientX;
-          longPressY = p.clientY;
           longPressActivated = false;
           longPressTypeId = item.dataset.typeId;
           longPressTimer = setTimeout(() => {
@@ -930,13 +912,7 @@
             selectedPhotoType = longPressTypeId;
             container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
             item.classList.add('selected');
-            const inp = document.getElementById('gallery-input');
-            inp.style.width = '48px';
-            inp.style.height = '48px';
-            inp.style.left = (longPressX - 24) + 'px';
-            inp.style.top = (longPressY - 24) + 'px';
-            inp.style.opacity = '0.01';
-            inp.style.zIndex = '9999';
+            showToast('Отпустите и нажмите ещё раз для выбора из галереи');
           }, 1500);
         }
 
@@ -944,7 +920,7 @@
           clearTimeout(longPressTimer);
           longPressTimer = null;
           longPressActivated = false;
-          hideGalleryInput();
+          _preventClick = false;
         }
 
         item.addEventListener('pointerdown', startLongPress);
