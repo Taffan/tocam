@@ -957,8 +957,19 @@
             return;
           }
           const typeId = item.dataset.typeId;
-        const pt = section.photoTypes.find(t => t.id === typeId);
-        selectedPhotoType = typeId;
+          const pt = section.photoTypes.find(t => t.id === typeId);
+          // left 60px → gallery (tappable zone for iOS/Android)
+          const _r = item.getBoundingClientRect();
+          const isGalleryClick = !(pt?.isKE || pt?.isSN) && e.clientX && (e.clientX - _r.left) < 60;
+          if (isGalleryClick) {
+            e.preventDefault();
+            selectedPhotoType = typeId;
+            container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
+            item.classList.add('selected');
+            openGallery();
+            return;
+          }
+          selectedPhotoType = typeId;
         container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
         item.classList.add('selected');
         if (pt?.isKE || pt?.isSN) {
@@ -970,19 +981,6 @@
           if (existing.length > 0) openPhotoGallery(section, pt);
           else document.getElementById('camera-input').click();
         }
-      });
-    });
-
-    // check-circle → gallery
-    container.querySelectorAll('.photo-type-item:not(.ke-type):not(.sn-type) .photo-type-check').forEach(check => {
-      check.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const item = check.closest('.photo-type-item');
-        const typeId = item.dataset.typeId;
-        selectedPhotoType = typeId;
-        container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
-        item.classList.add('selected');
-        openGallery();
       });
     });
 
