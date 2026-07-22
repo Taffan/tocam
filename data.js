@@ -8,13 +8,14 @@ const TYPE_CONFIGS = {
       { id: 'td', name: 'ТД', icon: 'td' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
       { id: 'uks', name: 'УКС', icon: 'uks' },
-      { id: 'mp', name: 'МП', icon: 'mp' }
+      { id: 'mp', name: 'МП', icon: 'mp' },
+      { id: 'stp', name: 'Стационарный термопринтер', icon: 'stp' }
     ],
     hasProchee: true
   },
-  mm: {
+  mm_uks: {
     name: 'ММ',
-    label: 'Магнит Супермаркет',
+    label: 'Магнит Супермаркет (УКС)',
     separator: ' # ',
     equipment: [
       { id: 'kassa_zona', name: 'Кассовая зона', icon: 'kassa' },
@@ -22,9 +23,25 @@ const TYPE_CONFIGS = {
       { id: 'td', name: 'ТД', icon: 'td' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
       { id: 'uks', name: 'УКС', icon: 'uks' },
+      { id: 'vesi_napolnie', name: 'Весы', icon: 'vesi' },
+      { id: 'mp', name: 'Мобильный принтер', icon: 'mp' },
+      { id: 'stp', name: 'Стационарный термопринтер', icon: 'stp' }
+    ],
+    hasProchee: true
+  },
+  mm_rmd: {
+    name: 'ММ',
+    label: 'Магнит Супермаркет (РМД)',
+    separator: ' # ',
+    equipment: [
+      { id: 'kassa_zona', name: 'Кассовая зона', icon: 'kassa' },
+      { id: 'kso', name: 'КСО', icon: 'kso' },
+      { id: 'td', name: 'ТД', icon: 'td' },
+      { id: 'tsd', name: 'ТСД', icon: 'tsd' },
       { id: 'rmd', name: 'РМД', icon: 'rmd' },
-      { id: 'vesi', name: 'Весы', icon: 'vesi' },
-      { id: 'mp', name: 'Мобильный принтер', icon: 'mp' }
+      { id: 'vesi_napolnie', name: 'Весы', icon: 'vesi' },
+      { id: 'mp', name: 'Мобильный принтер', icon: 'mp' },
+      { id: 'stp', name: 'Стационарный термопринтер', icon: 'stp' }
     ],
     hasProchee: true
   },
@@ -36,7 +53,26 @@ const TYPE_CONFIGS = {
       { id: 'kassa_zona', name: 'Кассовая зона', icon: 'kassa' },
       { id: 'td', name: 'ТД', icon: 'td' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
-      { id: 'uks', name: 'УКС', icon: 'uks' }
+      { id: 'uks', name: 'УКС', icon: 'uks' },
+      { id: 'stp', name: 'Стационарный термопринтер', icon: 'stp' }
+    ],
+    hasProchee: true
+  },
+  gm: {
+    name: 'ГМ',
+    label: 'Гипермаркет',
+    separator: ' # ',
+    equipment: [
+      { id: 'kassa_zona', name: 'Кассовая зона', icon: 'kassa' },
+      { id: 'kso', name: 'КСО', icon: 'kso' },
+      { id: 'td', name: 'ТД', icon: 'td' },
+      { id: 'tsd', name: 'ТСД', icon: 'tsd' },
+      { id: 'uks', name: 'УКС', icon: 'uks' },
+      { id: 'vesi_napolnie', name: 'Весы напольные', icon: 'vesi' },
+      { id: 'vesi_samoobsl', name: 'Весы самообслуживания', icon: 'vesi' },
+      { id: 'vesi_pechat', name: 'Весы с печатью', icon: 'vesi' },
+      { id: 'mp', name: 'Мобильный принтер', icon: 'mp' },
+      { id: 'stp', name: 'Стационарный термопринтер', icon: 'stp' }
     ],
     hasProchee: true
   }
@@ -145,6 +181,17 @@ const PHOTO_TYPES = {
       { id: 'sn', name: 'СН Мобильный принтер', filename: 'СН Мобильный принтер', hint: 'Текст маркировок читаемым; Изображение четким; Наклейка + оборудование видно.' }
     ]
   },
+  stp: {
+    photo: [
+      { id: 'vid_pechat', name: 'Фото стационарный термопринтер + печать(Общий вид)', filename: 'Фото стационарный термопринтер + печать(Общий вид)', multi: true, hint: 'Оборудование исправно. Печать на этикетке без повреждений.' }
+    ],
+    ke: [
+      { id: 'ke', name: 'Фото стационарный термопринтер КЕ', filename: 'Фото стационарный термопринтер КЕ', hint: 'Текст маркировок читаемым; Изображение четким; Наклейка + оборудование видно.' }
+    ],
+    sn: [
+      { id: 'sn', name: 'СН Стационарный термопринтер', filename: 'СН Стационарный термопринтер', hint: 'Текст маркировок читаемым; Изображение четким; Наклейка + оборудование видно.' }
+    ]
+  },
   kassa_zona: {
     photo: [
       { id: 'obshiy_vid', name: 'Фото общего вида Касса (общий)', filename: 'Фото общего вида Касса (общий)', multi: true, hint: 'Видно расположение оборудования (ККМ, сканер ШК, клавиатура, монитор, ТБО, дисплей покупателя, весы).' },
@@ -200,15 +247,37 @@ const PHOTO_TYPES = {
       { id: 'sn_vesi', name: 'СН весы', filename: 'СН весы', hint: 'Текст маркировок читаемым; Изображение четким; Наклейка + оборудование видно.' }
     ]
   },
-  vesi: {
+  vesi_napolnie: {
     photo: [
-      { id: 'vesi_napolnie', name: 'Фото Весы напольные', filename: 'Фото Весы напольные', multi: true, hint: 'Оборудование исправно, нет внешних индикаций о проблеме.' }
+      { id: 'obshiy_vid', name: 'Фото Весы напольные', filename: 'Фото Весы напольные', multi: true, hint: 'Оборудование исправно, нет внешних индикаций о проблеме.' }
     ],
     ke: [
       { id: 'ke', name: 'Фото КЕ Весы напольные', filename: 'Фото КЕ Весы напольные', hint: 'Текст маркировок читаемым; Изображение четким; Наклейка + оборудование видно.' }
     ],
     sn: [
       { id: 'sn', name: 'СН Весы напольные', filename: 'СН Весы напольные', hint: 'Текст маркировок читаемым; Изображение четким; Наклейка + оборудование видно.' }
+    ]
+  },
+  vesi_samoobsl: {
+    photo: [
+      { id: 'obshiy_vid', name: 'Фото Весы самообслуживания', filename: 'Фото Весы самообслуживания', multi: true, hint: 'Оборудование исправно, нет внешних индикаций о проблеме.' }
+    ],
+    ke: [
+      { id: 'ke', name: 'Фото КЕ Весы самообслуживания', filename: 'Фото КЕ Весы самообслуживания', hint: 'Текст маркировок читаемым; Изображение четким; Наклейка + оборудование видно.' }
+    ],
+    sn: [
+      { id: 'sn', name: 'СН Весы самообслуживания', filename: 'СН Весы самообслуживания', hint: 'Текст маркировок читаемым; Изображение четким; Наклейка + оборудование видно.' }
+    ]
+  },
+  vesi_pechat: {
+    photo: [
+      { id: 'obshiy_vid', name: 'Фото Весы с печатью', filename: 'Фото Весы с печатью', multi: true, hint: 'Оборудование исправно, нет внешних индикаций о проблеме.' }
+    ],
+    ke: [
+      { id: 'ke', name: 'Фото КЕ Весы с печатью', filename: 'Фото КЕ Весы с печатью', hint: 'Текст маркировок читаемым; Изображение четким; Наклейка + оборудование видно.' }
+    ],
+    sn: [
+      { id: 'sn', name: 'СН Весы с печатью', filename: 'СН Весы с печатью', hint: 'Текст маркировок читаемым; Изображение четким; Наклейка + оборудование видно.' }
     ]
   },
   prochee: {
@@ -291,7 +360,7 @@ function generateSections(type, equipmentCounts) {
         sectionName = `${eq.name} ${n}`;
         sectionPrefix = eq.name;
         numSuffix = n;
-      } else if (['kassa_zona', 'kso', 'vesi', 'mp', 'rmd'].includes(eq.id)) {
+      } else if (['kassa_zona', 'kso', 'vesi_napolnie', 'vesi_samoobsl', 'vesi_pechat', 'mp', 'stp', 'rmd'].includes(eq.id)) {
         sectionName = `${eq.name} ${n}`;
         sectionPrefix = eq.name;
         numSuffix = n;
@@ -303,7 +372,8 @@ function generateSections(type, equipmentCounts) {
 
       const photoTypes = getPhotoTypes(eq.id).filter(pt => {
         if (type === 'mk' && eq.id === 'kassa' && (pt.id === 'ke_monitor' || pt.id === 'sn_monitor')) return false;
-        if (type === 'mm' && eq.id === 'kassa_zona' && (pt.id === 'ke_monitor' || pt.id === 'sn_monitor')) return false;
+        if ((type === 'mm_uks' || type === 'mm_rmd') && eq.id === 'kassa_zona' && (pt.id === 'ke_monitor' || pt.id === 'sn_monitor')) return false;
+        if (type === 'gm' && eq.id === 'kassa_zona' && (pt.id === 'ke_monitor' || pt.id === 'sn_monitor')) return false;
         return true;
       });
       const formattedTypes = photoTypes.map(pt => {
@@ -314,7 +384,7 @@ function generateSections(type, equipmentCounts) {
             filename = `${sectionPrefix} ${numSuffix} ${pt.filename}`;
           } else if (['td', 'tsd'].includes(eq.id)) {
             filename = `${sectionPrefix}${numSuffix} ${pt.filename}`;
-          } else if (eq.id === 'uks' || eq.id === 'mp') {
+          } else if (eq.id === 'uks' || eq.id === 'mp' || eq.id === 'stp') {
             filename = `${sectionPrefix} ${pt.filename}`;
           } else {
             filename = `${sectionPrefix} ${pt.filename}`;
@@ -367,8 +437,11 @@ const SECTION_ICONS = {
   td: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M6 12h12M6 16h8"/></svg>`,
   tsd: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>`,
   uks: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
-  vesi: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>`,
+  vesi_napolnie: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>`,
+  vesi_samoobsl: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>`,
+  vesi_pechat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>`,
   mp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 9V6a6 6 0 1112 0v3"/><rect x="3" y="9" width="18" height="12" rx="1"/></svg>`,
+  stp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 18V4a1 1 0 011-1h10a1 1 0 011 1v14"/><rect x="3" y="16" width="18" height="4" rx="1"/><path d="M8 8h8M8 11h8"/></svg>`,
   rmd: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><circle cx="8" cy="10" r="2"/><circle cx="16" cy="10" r="2"/></svg>`,
   prochee: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>`
 };
@@ -380,7 +453,10 @@ const EQUIPMENT_ICONS = {
   td: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M6 12h12M6 16h8"/></svg>`,
   tsd: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>`,
   uks: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
-  vesi: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>`,
+  vesi_napolnie: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>`,
+  vesi_samoobsl: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>`,
+  vesi_pechat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg>`,
   mp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 9V6a6 6 0 1112 0v3"/><rect x="3" y="9" width="18" height="12" rx="1"/></svg>`,
+  stp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 18V4a1 1 0 011-1h10a1 1 0 011 1v14"/><rect x="3" y="16" width="18" height="4" rx="1"/><path d="M8 8h8M8 11h8"/></svg>`,
   rmd: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><circle cx="8" cy="10" r="2"/><circle cx="16" cy="10" r="2"/></svg>`
 };

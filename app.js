@@ -49,6 +49,7 @@
   let longPressTypeId = null;
   function clearLongPress() {
     if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    longPressActivated = false;
   }
   let _swReg = null;
   let _updatePendingReload = false;
@@ -568,7 +569,10 @@
     const icons = {
       mk: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/></svg>`,
       mm: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>`,
-      ma: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z"/></svg>`
+      mm_uks: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>`,
+      mm_rmd: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>`,
+      ma: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z"/></svg>`,
+      gm: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 9V5a4 4 0 00-8 0v4"/><path d="M2 11h20v10H2z"/></svg>`
     };
     return icons[type] || icons.mk;
   }
@@ -859,45 +863,45 @@
     container.innerHTML = html;
 
     container.querySelectorAll('.photo-type-item').forEach(item => {
-      function onPressStart(e) {
-        if (e.pointerType === 'touch') return;
+      let _preventClick = false;
+
+      item.addEventListener('contextmenu', (e) => e.preventDefault());
+
+      item.addEventListener('touchstart', () => {
         longPressActivated = false;
         longPressTypeId = item.dataset.typeId;
         longPressTimer = setTimeout(() => {
           longPressActivated = true;
+          _preventClick = true;
           selectedPhotoType = longPressTypeId;
           container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
           item.classList.add('selected');
         }, 1500);
-      }
+      }, { passive: true });
 
-      function onPressEnd(e) {
-        if (e.pointerType === 'touch') return;
+      item.addEventListener('touchmove', () => {
         clearTimeout(longPressTimer);
         longPressTimer = null;
-      }
+        longPressActivated = false;
+      }, { passive: true });
 
-      item.addEventListener('pointerdown', onPressStart);
-      item.addEventListener('touchstart', onPressStart);
-      item.addEventListener('pointerup', onPressEnd);
-      item.addEventListener('touchend', (e) => {
+      item.addEventListener('touchend', () => {
         clearTimeout(longPressTimer);
+        longPressTimer = null;
         if (longPressActivated) {
           longPressActivated = false;
-          e.preventDefault();
           document.getElementById('gallery-input').click();
-          return;
         }
-        longPressTimer = null;
       });
-      item.addEventListener('touchcancel', () => { clearTimeout(longPressTimer); longPressActivated = false; });
+
+      item.addEventListener('touchcancel', () => {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+        longPressActivated = false;
+      });
 
       item.addEventListener('click', (e) => {
-        if (longPressActivated) {
-          longPressActivated = false;
-          document.getElementById('gallery-input').click();
-          return;
-        }
+        if (_preventClick) { _preventClick = false; return; }
         const typeId = item.dataset.typeId;
         const pt = section.photoTypes.find(t => t.id === typeId);
         selectedPhotoType = typeId;
@@ -1021,18 +1025,78 @@
     return { width: { ideal: 1280 }, height: { ideal: 720 } };
   }
 
+  function getEXIFOrientation(file) {
+    return new Promise(resolve => {
+      const blob = file.slice(0, 65536);
+      const reader = new FileReader();
+      reader.onload = () => {
+        const view = new DataView(reader.result);
+        if (view.getUint16(0, false) !== 0xFFD8) { resolve(1); return; }
+        let offset = 2;
+        while (offset < view.byteLength - 2) {
+          if (view.getUint16(offset, false) === 0xFFE1) {
+            const exifLen = view.getUint16(offset + 2, false);
+            const exifStart = offset + 4;
+            if (exifStart + 8 > view.byteLength) break;
+            const exifId = String.fromCharCode(view.getUint8(exifStart), view.getUint8(exifStart + 1), view.getUint8(exifStart + 2), view.getUint8(exifStart + 3), view.getUint8(exifStart + 4), view.getUint8(exifStart + 5));
+            if (exifId !== 'Exif\0\0') { offset += 2 + exifLen; continue; }
+            const tiffOffset = exifStart + 6;
+            const littleEndian = view.getUint16(tiffOffset, false) === 0x4949;
+            if (view.getUint16(tiffOffset + 2, littleEndian) !== 0x002A) break;
+            const ifdOffset = tiffOffset + view.getUint32(tiffOffset + 4, littleEndian);
+            if (ifdOffset + 2 > view.byteLength) break;
+            const entries = view.getUint16(ifdOffset, littleEndian);
+            for (let i = 0; i < entries; i++) {
+              const entryOff = ifdOffset + 2 + i * 12;
+              if (entryOff + 12 > view.byteLength) break;
+              if (view.getUint16(entryOff, littleEndian) === 0x0112) {
+                resolve(view.getUint16(entryOff + 8, littleEndian));
+                return;
+              }
+            }
+            break;
+          }
+          if (view.getUint16(offset, false) === 0xFFD9) break;
+          const markerLen = view.getUint16(offset + 2, false);
+          if (markerLen < 2) break;
+          offset += 2 + markerLen;
+        }
+        resolve(1);
+      };
+      reader.readAsArrayBuffer(blob);
+    });
+  }
+
   function processImage(file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const maxSize = getPhotoMaxSize();
-        let w = img.width, h = img.height;
-        if (w > h && w > maxSize) { h = h * maxSize / w; w = maxSize; }
-        else if (h > maxSize) { w = w * maxSize / h; h = maxSize; }
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    getEXIFOrientation(file).then(orientation => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxSize = getPhotoMaxSize();
+          let w = img.width, h = img.height;
+          const swapWH = orientation === 5 || orientation === 6 || orientation === 7 || orientation === 8;
+          if (swapWH) { w = img.height; h = img.width; }
+          if (w > h && w > maxSize) { h = h * maxSize / w; w = maxSize; }
+          else if (h > maxSize) { w = w * maxSize / h; h = maxSize; }
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (orientation > 1) {
+            ctx.save();
+            ctx.translate(w / 2, h / 2);
+            if (orientation === 2) ctx.scale(-1, 1);
+            else if (orientation === 3) ctx.rotate(Math.PI);
+            else if (orientation === 4) ctx.scale(1, -1);
+            else if (orientation === 5) { ctx.scale(-1, 1); ctx.rotate(Math.PI / 2); }
+            else if (orientation === 6) ctx.rotate(Math.PI / 2);
+            else if (orientation === 7) { ctx.scale(-1, 1); ctx.rotate(-Math.PI / 2); }
+            else if (orientation === 8) ctx.rotate(-Math.PI / 2);
+            ctx.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
+            ctx.restore();
+          } else {
+            ctx.drawImage(img, 0, 0, w, h);
+          }
 
         const section = currentReport.sections[currentSectionIndex];
         const photoNumber = section.photos.filter(p => p.typeId === selectedPhotoType).length + 1;
@@ -1057,6 +1121,7 @@
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
+    });
   }
 
   let previewPhotoIdx = -1;
@@ -1589,8 +1654,12 @@
       'td': 'ТД',
       'tsd': 'ТСД',
       'uks': 'Универсальный кассовый стол (УКС)',
-      'vesi': 'Весы',
-      'mp': 'Мобильный принтер'
+      'vesi_napolnie': 'Весы напольные',
+      'vesi_samoobsl': 'Весы самообслуживания',
+      'vesi_pechat': 'Весы с печатью',
+      'mp': 'Мобильный принтер',
+      'stp': 'Стационарный термопринтер',
+      'rmd': 'РМД'
     };
 
     for (const [eqId, eqName] of Object.entries(eqMap)) {

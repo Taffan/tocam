@@ -93,12 +93,19 @@
               <span class="type-name">МК</span>
               <span class="type-label">Косметик</span>
             </button>
-            <button type="button" class="type-btn" data-type="mm">
+            <button type="button" class="type-btn" data-type="mm_uks">
               <span class="type-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
               </span>
               <span class="type-name">ММ</span>
-              <span class="type-label">Супермаркет</span>
+              <span class="type-label">Супермаркет (УКС)</span>
+            </button>
+            <button type="button" class="type-btn" data-type="mm_rmd">
+              <span class="type-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+              </span>
+              <span class="type-name">ММ</span>
+              <span class="type-label">Супермаркет (РМД)</span>
             </button>
             <button type="button" class="type-btn" data-type="ma">
               <span class="type-icon">
@@ -106,6 +113,13 @@
               </span>
               <span class="type-name">МА</span>
               <span class="type-label">Аптека</span>
+            </button>
+            <button type="button" class="type-btn" data-type="gm">
+              <span class="type-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 9V5a4 4 0 00-8 0v4"/><path d="M2 11h20v10H2z"/><path d="M6 15h4M14 15h4"/></svg>
+              </span>
+              <span class="type-name">ГМ</span>
+              <span class="type-label">Гипермаркет</span>
             </button>
           </div>
           <input type="hidden" id="input-type" value="">
@@ -206,8 +220,8 @@
       
       <div class="photo-grid-edit" id="photo-grid-edit"></div>
       
-      <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none">
-      <input type="file" id="gallery-input" accept="image/*" multiple style="display:none">
+      <input type="file" id="camera-input" accept="image/*" capture="environment" style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px">
+      <input type="file" id="gallery-input" accept="image/*" multiple style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px">
       
       <button class="btn btn-primary btn-block" id="btn-save-section">
         Сохранить
