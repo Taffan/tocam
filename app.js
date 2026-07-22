@@ -912,7 +912,7 @@
             selectedPhotoType = longPressTypeId;
             container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
             item.classList.add('selected');
-            showToast('Отпустите и нажмите ещё раз для выбора из галереи');
+            requestAnimationFrame(() => showToast('Отпустите и нажмите ещё раз для выбора из галереи'));
           }, 1500);
         }
 
