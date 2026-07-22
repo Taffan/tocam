@@ -360,6 +360,20 @@
       setTimeout(() => { if (input.parentNode) input.parentNode.removeChild(input); }, 120000);
     });
 
+    // restore gallery-input to hidden state after use
+    function hideGalleryInput() {
+      var inp = document.getElementById('gallery-input');
+      if (!inp) return;
+      inp.style.width = '1px';
+      inp.style.height = '1px';
+      inp.style.left = '-9999px';
+      inp.style.top = '-9999px';
+      inp.style.opacity = '0';
+      inp.style.zIndex = '';
+    }
+    document.getElementById('gallery-input').addEventListener('change', hideGalleryInput);
+    document.getElementById('gallery-input').addEventListener('click', function() { setTimeout(hideGalleryInput, 2000); });
+
     document.addEventListener('pointerup', clearLongPressTimer);
     document.addEventListener('pointercancel', clearLongPress);
     document.addEventListener('touchend', clearLongPress);
@@ -898,8 +912,13 @@
 
         item.addEventListener('contextmenu', (e) => e.preventDefault());
 
-        function startLongPress() {
+        let longPressX = 0, longPressY = 0;
+
+        function startLongPress(e) {
           if (longPressTimer) return;
+          const p = e.touches ? e.touches[0] : e;
+          longPressX = p.clientX;
+          longPressY = p.clientY;
           longPressActivated = false;
           longPressTypeId = item.dataset.typeId;
           longPressTimer = setTimeout(() => {
@@ -908,6 +927,13 @@
             selectedPhotoType = longPressTypeId;
             container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
             item.classList.add('selected');
+            const inp = document.getElementById('gallery-input');
+            inp.style.width = '48px';
+            inp.style.height = '48px';
+            inp.style.left = (longPressX - 24) + 'px';
+            inp.style.top = (longPressY - 24) + 'px';
+            inp.style.opacity = '0.01';
+            inp.style.zIndex = '9999';
           }, 1500);
         }
 
@@ -915,6 +941,7 @@
           clearTimeout(longPressTimer);
           longPressTimer = null;
           longPressActivated = false;
+          hideGalleryInput();
         }
 
         item.addEventListener('pointerdown', startLongPress);
@@ -926,18 +953,10 @@
         item.addEventListener('pointerup', () => {
           clearTimeout(longPressTimer);
           longPressTimer = null;
-          if (longPressActivated) {
-            longPressActivated = false;
-            document.getElementById('gallery-label').click();
-          }
         });
         item.addEventListener('touchend', () => {
           clearTimeout(longPressTimer);
           longPressTimer = null;
-          if (longPressActivated) {
-            longPressActivated = false;
-            document.getElementById('gallery-label').click();
-          }
         });
 
         item.addEventListener('pointercancel', cancelLongPress);
@@ -947,7 +966,6 @@
           if (_preventClick) {
             _preventClick = false;
             e.preventDefault();
-            document.getElementById('gallery-label').click();
             return;
           }
           const typeId = item.dataset.typeId;
