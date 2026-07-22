@@ -360,20 +360,6 @@
       setTimeout(() => { if (input.parentNode) input.parentNode.removeChild(input); }, 120000);
     });
 
-    // restore gallery-input to hidden state after use
-    function hideGalleryInput() {
-      var inp = document.getElementById('gallery-input');
-      if (!inp) return;
-      inp.style.width = '1px';
-      inp.style.height = '1px';
-      inp.style.left = '-9999px';
-      inp.style.top = '-9999px';
-      inp.style.opacity = '0';
-      inp.style.zIndex = '';
-    }
-    document.getElementById('gallery-input').addEventListener('change', hideGalleryInput);
-    document.getElementById('gallery-input').addEventListener('click', function() { setTimeout(hideGalleryInput, 2000); });
-
     document.addEventListener('pointerup', clearLongPressTimer);
     document.addEventListener('pointercancel', clearLongPress);
     document.addEventListener('touchend', clearLongPress);
@@ -504,6 +490,23 @@
 
     loadSettings();
   }
+
+  // restore gallery-input to hidden state after use
+  function hideGalleryInput() {
+    var inp = document.getElementById('gallery-input');
+    if (!inp) return;
+    inp.style.width = '1px';
+    inp.style.height = '1px';
+    inp.style.left = '-9999px';
+    inp.style.top = '-9999px';
+    inp.style.opacity = '0';
+    inp.style.zIndex = '';
+  }
+  function openGallery() {
+    document.getElementById('gallery-input').click();
+  }
+  document.getElementById('gallery-input').addEventListener('change', hideGalleryInput);
+  document.getElementById('gallery-input').addEventListener('click', function() { setTimeout(hideGalleryInput, 2000); });
 
   function showPage(pageName) {
     document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
@@ -953,10 +956,18 @@
         item.addEventListener('pointerup', () => {
           clearTimeout(longPressTimer);
           longPressTimer = null;
+          if (longPressActivated) {
+            longPressActivated = false;
+            openGallery();
+          }
         });
         item.addEventListener('touchend', () => {
           clearTimeout(longPressTimer);
           longPressTimer = null;
+          if (longPressActivated) {
+            longPressActivated = false;
+            openGallery();
+          }
         });
 
         item.addEventListener('pointercancel', cancelLongPress);
@@ -966,6 +977,7 @@
           if (_preventClick) {
             _preventClick = false;
             e.preventDefault();
+            openGallery();
             return;
           }
           const typeId = item.dataset.typeId;
