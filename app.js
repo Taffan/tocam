@@ -973,6 +973,19 @@
       });
     });
 
+    // check-circle → gallery
+    container.querySelectorAll('.photo-type-item:not(.ke-type):not(.sn-type) .photo-type-check').forEach(check => {
+      check.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const item = check.closest('.photo-type-item');
+        const typeId = item.dataset.typeId;
+        selectedPhotoType = typeId;
+        container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
+        item.classList.add('selected');
+        openGallery();
+      });
+    });
+
     container.querySelectorAll('.photo-type-hint-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
