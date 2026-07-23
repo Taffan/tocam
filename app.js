@@ -930,7 +930,7 @@
           const pt = section.photoTypes.find(t => t.id === typeId);
           // left 60px → gallery (tappable zone for iOS/Android)
           const _r = item.getBoundingClientRect();
-          const isGalleryClick = !(pt?.isKE || pt?.isSN) && e.clientX && (e.clientX - _r.left) < 60;
+          const isGalleryClick = e.clientX && (e.clientX - _r.left) < 60;
           if (isGalleryClick) {
             e.preventDefault();
             selectedPhotoType = typeId;
@@ -1108,15 +1108,38 @@
       reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
-          const canvas = document.createElement('canvas');
           const maxSize = getPhotoMaxSize();
           let w = img.width, h = img.height;
           const swapWH = orientation === 5 || orientation === 6 || orientation === 7 || orientation === 8;
           if (swapWH) { w = img.height; h = img.width; }
+
+          // step-down resize for iOS (canvas limit ~4096px)
+          let srcW = img.width, srcH = img.height;
+          const stepLimit = 4096;
+          while (srcW > stepLimit || srcH > stepLimit) {
+            const ratio = Math.min(stepLimit / srcW, stepLimit / srcH);
+            srcW = Math.round(srcW * ratio);
+            srcH = Math.round(srcH * ratio);
+          }
+
           if (w > h && w > maxSize) { h = h * maxSize / w; w = maxSize; }
           else if (h > maxSize) { w = w * maxSize / h; h = maxSize; }
+
+          // if step-down needed, use temp canvas first
+          let srcCanvas, srcCtx;
+          if (srcW !== img.width || srcH !== img.height) {
+            srcCanvas = document.createElement('canvas');
+            srcCanvas.width = srcW;
+            srcCanvas.height = srcH;
+            srcCtx = srcCanvas.getContext('2d');
+            srcCtx.drawImage(img, 0, 0, srcW, srcH);
+          }
+
+          const canvas = document.createElement('canvas');
           canvas.width = w; canvas.height = h;
           const ctx = canvas.getContext('2d');
+          const src = srcCanvas || img;
+
           if (orientation > 1) {
             ctx.save();
             ctx.translate(w / 2, h / 2);
@@ -1127,10 +1150,10 @@
             else if (orientation === 6) ctx.rotate(Math.PI / 2);
             else if (orientation === 7) { ctx.scale(-1, 1); ctx.rotate(-Math.PI / 2); }
             else if (orientation === 8) ctx.rotate(-Math.PI / 2);
-            ctx.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
+            ctx.drawImage(src, -w / 2, -h / 2, w, h);
             ctx.restore();
           } else {
-            ctx.drawImage(img, 0, 0, w, h);
+            ctx.drawImage(src, 0, 0, w, h);
           }
 
         const section = currentReport.sections[currentSectionIndex];
