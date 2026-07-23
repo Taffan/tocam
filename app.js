@@ -1318,6 +1318,7 @@
     const confirmBar = document.getElementById('ke-cam-confirm');
 
     pendingScanCode = null;
+    window._zxingDetectedCodes = null;
     cachedOverlayCodes = '';
     modal.classList.remove('hidden');
     if (overlays) overlays.innerHTML = '';
@@ -1441,33 +1442,52 @@
       ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.UPC_A,
       ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.ITF
     ]);
-    const reader = new ZXing.MultiFormatReader();
-    reader.setHints(hints);
-    window._zxingReader = reader;
-    window._zxingCv = document.createElement('canvas');
-    window._zxingCv.style.display = 'none';
-    document.body.appendChild(window._zxingCv);
-    const ctx = window._zxingCv.getContext('2d');
-
-    scanTimer = setInterval(() => {
-      if (scanCooldown || video.readyState < 2 || !video.videoWidth) return;
-      try {
-        window._zxingCv.width = video.videoWidth;
-        window._zxingCv.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-        const imgData = ctx.getImageData(0, 0, window._zxingCv.width, window._zxingCv.height);
-        const lum = new ZXing.RGBLuminanceSource(imgData.data, window._zxingCv.width, window._zxingCv.height);
-        const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
-        const result = window._zxingReader.decode(bmp);
-        if (pendingScanCode) {
-          updateTrackingUI(result && result.getText() === pendingScanCode);
-        } else if (result) {
-          onScanCodeFound(result.getText());
+    window._zxingBrowserReader = new ZXing.BrowserMultiFormatReader(hints, 400);
+    window._zxingDetectedCodes = new Map();
+    window._zxingOverlayTimer = setInterval(renderZXingOverlays, 500);
+    window._zxingBrowserReader.decodeFromVideoElementContinuously(video, (result, err) => {
+      if (result) {
+        const code = result.getText();
+        if (code && !pendingScanCode) {
+          const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
+          if (pt?.isSN || isKECode(code)) {
+            window._zxingDetectedCodes.set(code, Date.now());
+          }
         }
-      } catch(e) {
-        if (pendingScanCode) updateTrackingUI(false);
       }
-    }, 400);
+    });
+  }
+
+  function renderZXingOverlays() {
+    const container = document.getElementById('ke-cam-overlays');
+    if (!container) return;
+    const confirmBar = document.getElementById('ke-cam-confirm');
+    if ((confirmBar && !confirmBar.classList.contains('hidden')) || pendingScanCode) {
+      if (container.innerHTML) container.innerHTML = '';
+      return;
+    }
+    const now = Date.now();
+    if (window._zxingDetectedCodes) {
+      for (const [code, ts] of window._zxingDetectedCodes) {
+        if (now - ts > 3000) window._zxingDetectedCodes.delete(code);
+      }
+    }
+    if (!window._zxingDetectedCodes || window._zxingDetectedCodes.size === 0) {
+      if (container.innerHTML) container.innerHTML = '';
+      return;
+    }
+    let html = '';
+    let idx = 0;
+    for (const code of window._zxingDetectedCodes.keys()) {
+      html += `<div class="ke-cam-overlay-box" data-code="${code}" style="left:5%;top:${20 + idx * 14}%;width:90%;height:auto;min-height:32px"><span class="ke-cam-overlay-label">${code}</span></div>`;
+      idx++;
+    }
+    if (container.innerHTML !== html) {
+      container.innerHTML = html;
+      container.querySelectorAll('.ke-cam-overlay-box').forEach(el => {
+        el.addEventListener('click', () => selectBarcodeCode(el.dataset.code));
+      });
+    }
   }
 
   function selectBarcodeCode(code) {
@@ -1561,6 +1581,9 @@
     if (video && video.srcObject) { video.srcObject = null; }
     if (window._zxingCv) { window._zxingCv.remove(); window._zxingCv = null; }
     if (window._zxingReader) { window._zxingReader.reset(); window._zxingReader = null; }
+    if (window._zxingBrowserReader) { window._zxingBrowserReader.reset(); window._zxingBrowserReader = null; }
+    if (window._zxingOverlayTimer) { clearInterval(window._zxingOverlayTimer); window._zxingOverlayTimer = null; }
+    window._zxingDetectedCodes = null;
   }
 
   function keCamCapture() {
