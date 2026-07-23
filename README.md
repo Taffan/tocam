@@ -24,21 +24,21 @@ PWA for creating technical maintenance reports for Magnit retail stores.
 
 | [EN] | [RU] |
 |-------|-------|
-| 3 report types: MK, MM, MA | 3 типа отчётов: МК, ММ, МА |
+| 5 report types: MK, MM(UKS), MM(RMD), MA, GM | 5 типов отчётов: МК, ММ(УКС), ММ(РМД), МА, ГМ |
 | Torch/flashlight in barcode scanner | Фонарик в сканере ШК |
 | Auto-update via Service Worker | Автообновление через Service Worker |
 | Equipment configuration | Конфигурация оборудования |
 | Photo capture + gallery preview | Фотофиксация + просмотр/галерея |
-| Photo from device gallery (long press 1.5s) | Выбор фото из галереи (долгое нажатие 1.5с) |
+| Photo from device gallery (left 60px zone or long press) | Выбор фото из галереи (левая зона 60px или долгое нажатие) |
 | KE (inventory numbers) — barcode scanner + preview | КЕ (инвентарные номера) — сканер ШК + превью |
 | SN (serial numbers) — barcode scanner + preview | СН (серийные номера) — сканер ШК + превью |
-| Interactive scanner: yellow boxes → select → green/red tracking | Интерактивный сканер: жёлтые рамки → выбор → зелёная/красная рамка |
+| Interactive scanner: yellow boxes → select → green/red tracking | Интерактивный сканер: блоки → выбор → зелёная/красная рамка |
 | Photo quality settings (3 levels) | Настройка качества фото (3 уровня) |
 | Scanner quality settings (3 levels) | Настройка качества сканера (3 уровня) |
 | Dark theme | Тёмная тема |
 | Help page with usage guide | Справка с описанием функционала |
 | Offline auto-save | Автосохранение офлайн |
-| ZIP export with XLSX | Экспорт в ZIP с XLSX |
+| ZIP export with XLSX + Codes.txt | Экспорт в ZIP с XLSX и Коды.txt |
 
 ---
 
@@ -51,8 +51,11 @@ PWA for creating technical maintenance reports for Magnit retail stores.
 | Distribution node | ТД |
 | Handheld terminal | ТСД |
 | Universal checkout table | УКС |
-| Scales | Весы |
+| Manager workstation (RMD) | РМД |
+| Server room | Серверная |
+| Scales | Весы (напольные/самообсл./с печатью) |
 | Mobile printer | МП |
+| Stationary thermal printer | Стац. термопринтер |
 | Other | Прочее |
 
 ---
@@ -61,9 +64,11 @@ PWA for creating technical maintenance reports for Magnit retail stores.
 
 | Type | [EN] | [RU] | Equipment |
 |------|-------|------|-----------|
-| MK | Cosmetics | Косметик | Checkout, TD, Handheld, UKS, Printer |
-| MM | Supermarket | Супермаркет | Checkout zone, Self-checkout, TD, Handheld, UKS, Scales, Printer |
-| MA | Pharmacy | Аптека | Checkout zone, TD, Handheld, UKS |
+| MK | Cosmetics | Магнит Косметик | Checkout, TD, Handheld, UKS, Printer, St. printer |
+| MM(UKS) | Supermarket (UKS) | Супермаркет (УКС) | Checkout zone, Self-checkout, TD, Handheld, UKS, Scales, Printer, St. printer |
+| MM(RMD) | Supermarket (RMD) | Супермаркет (РМД) | Checkout zone, Self-checkout, TD, Handheld, RMD, Scales, Printer, St. printer |
+| MA | Pharmacy | Магнит Аптека | Checkout zone, TD, Handheld, UKS, St. printer |
+| GM | Hypermarket | Магнит Гипермаркет | Server, Checkout zone, Self-checkout, TD, Handheld, Scales (floor/Self/print), Printer, St. printer |
 
 ---
 
@@ -113,8 +118,8 @@ KE (inventory numbers):
   ...
 
 Serial numbers:
-  KE Serial ККТ
-  KE Serial ИБП
+  QR-CODE-DATA
+  CODE128-DATA
   ...
 ```
 

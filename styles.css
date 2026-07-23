@@ -1980,6 +1980,57 @@ body {
   word-break: break-all;
 }
 
+.sn-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 12px;
+}
+
+.sn-items .sn-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+}
+
+.sn-items .sn-item-code {
+  flex: 1;
+  font-family: monospace;
+  font-size: 15px;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.sn-items .sn-item-delete {
+  width: 32px;
+  height: 32px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0;
+}
+
+.sn-items .sn-item-delete::after {
+  content: '×';
+  font-size: 20px;
+  font-weight: 300;
+}
+
+.sn-items .sn-item-delete:active {
+  background: var(--primary);
+  color: white;
+}
+
 .ke-item-photo {
   width: 50px;
   height: 50px;

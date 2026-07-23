@@ -1,7 +1,7 @@
 (function() {
   'use strict';
 
-  let APP_VERSION = localStorage.getItem('appVersion') || '1.0';
+  let APP_VERSION = localStorage.getItem('appVersion') || '1.0.5.6';
 
   const verEl = document.getElementById('settings-version-number');
   if (verEl) verEl.textContent = APP_VERSION;
@@ -693,7 +693,8 @@
       technician: document.getElementById('input-technician').value,
       comment: document.getElementById('input-comment').value,
       sections: sections,
-      keCodes: []
+      keCodes: [],
+      snCodes: []
     };
 
     saveReport();
@@ -1605,7 +1606,8 @@
     });
     
     if (pendingScanCode) {
-      addKECode(pendingScanCode);
+      const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
+      addKECode(pendingScanCode, pt?.isSN);
       pendingScanCode = null;
     } else {
       tryDecodeFromCapture(canvas);
@@ -1647,7 +1649,7 @@
         if (result && result.getText()) {
           const code = result.getText();
           if (isSN || isKECode(code)) {
-            addKECode(code);
+            addKECode(code, isSN);
             showToast('ШК распознан: ' + code);
             return;
           }
@@ -1659,7 +1661,7 @@
     if (entered && entered.trim()) {
       const code = entered.trim();
       if (isSN || isKECode(code)) {
-        addKECode(code);
+        addKECode(code, isSN);
       } else {
         showToast('Некорректный номер ' + label);
       }
@@ -1684,39 +1686,60 @@
     } catch(e) {}
   }
 
-  function addKECode(code) {
+  function addKECode(code, isSN) {
     if (!currentReport) return;
-    if (!currentReport.keCodes) currentReport.keCodes = [];
-    if (currentReport.keCodes.includes(code)) return;
-    currentReport.keCodes.push(code);
+    const arr = isSN ? 'snCodes' : 'keCodes';
+    if (!currentReport[arr]) currentReport[arr] = [];
+    if (currentReport[arr].includes(code)) return;
+    currentReport[arr].push(code);
     saveReport();
     renderKEList();
   }
 
   function renderKEList() {
-    const container = document.getElementById('ke-items');
-    const countSpan = document.getElementById('ke-count');
-    if (!currentReport || !currentReport.keCodes || !currentReport.keCodes.length) {
-      container.innerHTML = '<div class="empty-state"><div class="empty-state-text">Нет кодов КЕ</div></div>';
-      if (countSpan) countSpan.textContent = '';
-      return;
-    }
-    if (countSpan) countSpan.textContent = `(${currentReport.keCodes.length})`;
-    container.innerHTML = currentReport.keCodes.map((code, i) => `
-      <div class="ke-item" data-idx="${i}">
-        <div class="ke-item-code">${escapeHtml(code)}</div>
-        <button class="ke-item-delete"></button>
-      </div>
-    `).join('');
+    const keContainer = document.getElementById('ke-items');
+    const snContainer = document.getElementById('sn-items');
+    if (!currentReport) return;
 
-    container.querySelectorAll('.ke-item-delete').forEach(btn => {
-      btn.onclick = (e) => {
-        const idx = parseInt(e.target.closest('.ke-item').dataset.idx);
-        currentReport.keCodes.splice(idx, 1);
-        saveReport();
-        renderKEList();
-      };
-    });
+    if (currentReport.keCodes && currentReport.keCodes.length) {
+      keContainer.innerHTML = '<div class="ke-sn-header"><span>КЕ (инвентарные номера)</span></div>' +
+        currentReport.keCodes.map((code, i) => `
+          <div class="ke-item" data-idx="${i}">
+            <div class="ke-item-code">${escapeHtml(code)}</div>
+            <button class="ke-item-delete"></button>
+          </div>
+        `).join('');
+      keContainer.querySelectorAll('.ke-item-delete').forEach(btn => {
+        btn.onclick = (e) => {
+          const idx = parseInt(e.target.closest('.ke-item').dataset.idx);
+          currentReport.keCodes.splice(idx, 1);
+          saveReport();
+          renderKEList();
+        };
+      });
+    } else {
+      keContainer.innerHTML = '';
+    }
+
+    if (currentReport.snCodes && currentReport.snCodes.length) {
+      snContainer.innerHTML = '<div class="ke-sn-header"><span>Серийные номера</span></div>' +
+        currentReport.snCodes.map((code, i) => `
+          <div class="sn-item" data-idx="${i}">
+            <div class="sn-item-code">${escapeHtml(code)}</div>
+            <button class="sn-item-delete"></button>
+          </div>
+        `).join('');
+      snContainer.querySelectorAll('.sn-item-delete').forEach(btn => {
+        btn.onclick = (e) => {
+          const idx = parseInt(e.target.closest('.sn-item').dataset.idx);
+          currentReport.snCodes.splice(idx, 1);
+          saveReport();
+          renderKEList();
+        };
+      });
+    } else {
+      snContainer.innerHTML = '';
+    }
   }
 
   function finishReport() {
@@ -2008,14 +2031,8 @@
       currentReport.keCodes.forEach(code => lines.push(`  ${code}`));
     }
     lines.push('', 'Серийные номера:');
-    for (const sec of currentReport.sections) {
-      for (const photo of sec.photos) {
-        const pt = sec.photoTypes.find(t => t.id === photo.typeId);
-        if (pt && pt.isSN) {
-          const shortName = pt.filename.replace('СН ', '');
-          lines.push(`  КЕ Серийный ${shortName}`);
-        }
-      }
+    if (currentReport.snCodes && currentReport.snCodes.length > 0) {
+      currentReport.snCodes.forEach(code => lines.push(`  ${code}`));
     }
     zip.file('Коды.txt', lines.join('\n'));
 
