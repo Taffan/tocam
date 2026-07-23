@@ -1108,11 +1108,6 @@
       reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
-          const maxSize = getPhotoMaxSize();
-          let w = img.width, h = img.height;
-          const swapWH = orientation === 5 || orientation === 6 || orientation === 7 || orientation === 8;
-          if (swapWH) { w = img.height; h = img.width; }
-
           // step-down resize for iOS (canvas limit ~4096px)
           let srcW = img.width, srcH = img.height;
           const stepLimit = 4096;
@@ -1121,39 +1116,37 @@
             srcW = Math.round(srcW * ratio);
             srcH = Math.round(srcH * ratio);
           }
+          const src = document.createElement('canvas');
+          src.width = srcW; src.height = srcH;
+          src.getContext('2d').drawImage(img, 0, 0, srcW, srcH);
 
-          if (w > h && w > maxSize) { h = h * maxSize / w; w = maxSize; }
-          else if (h > maxSize) { w = w * maxSize / h; h = maxSize; }
-
-          // if step-down needed, use temp canvas first
-          let srcCanvas, srcCtx;
-          if (srcW !== img.width || srcH !== img.height) {
-            srcCanvas = document.createElement('canvas');
-            srcCanvas.width = srcW;
-            srcCanvas.height = srcH;
-            srcCtx = srcCanvas.getContext('2d');
-            srcCtx.drawImage(img, 0, 0, srcW, srcH);
+          const maxDim = 1280;
+          function resizeToMax(srcCanvas, w, h) {
+            let rW, rH;
+            if (w >= h) { rW = maxDim; rH = Math.round(h / w * maxDim); }
+            else { rH = maxDim; rW = Math.round(w / h * maxDim); }
+            const c = document.createElement('canvas');
+            c.width = rW; c.height = rH;
+            c.getContext('2d').drawImage(srcCanvas, 0, 0, rW, rH);
+            return c;
           }
-
-          const canvas = document.createElement('canvas');
-          canvas.width = w; canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          const src = srcCanvas || img;
-
+          let canvas;
           if (orientation > 1) {
-            ctx.save();
-            ctx.translate(w / 2, h / 2);
-            if (orientation === 2) ctx.scale(-1, 1);
-            else if (orientation === 3) ctx.rotate(Math.PI);
-            else if (orientation === 4) ctx.scale(1, -1);
-            else if (orientation === 5) { ctx.scale(-1, 1); ctx.rotate(Math.PI / 2); }
-            else if (orientation === 6) ctx.rotate(Math.PI / 2);
-            else if (orientation === 7) { ctx.scale(-1, 1); ctx.rotate(-Math.PI / 2); }
-            else if (orientation === 8) ctx.rotate(-Math.PI / 2);
-            ctx.drawImage(src, -w / 2, -h / 2, w, h);
-            ctx.restore();
+            const tmp = document.createElement('canvas');
+            tmp.width = srcW; tmp.height = srcH;
+            const tctx = tmp.getContext('2d');
+            tctx.translate(srcW / 2, srcH / 2);
+            if (orientation === 2) tctx.scale(-1, 1);
+            else if (orientation === 3) tctx.rotate(Math.PI);
+            else if (orientation === 4) tctx.scale(1, -1);
+            else if (orientation === 5) { tctx.scale(-1, 1); tctx.rotate(Math.PI / 2); }
+            else if (orientation === 6) tctx.rotate(Math.PI / 2);
+            else if (orientation === 7) { tctx.scale(-1, 1); tctx.rotate(-Math.PI / 2); }
+            else if (orientation === 8) tctx.rotate(-Math.PI / 2);
+            tctx.drawImage(src, -srcW / 2, -srcH / 2, srcW, srcH);
+            canvas = resizeToMax(tmp, tmp.width, tmp.height);
           } else {
-            ctx.drawImage(src, 0, 0, w, h);
+            canvas = resizeToMax(src, srcW, srcH);
           }
 
         const section = currentReport.sections[currentSectionIndex];
@@ -1590,6 +1583,8 @@
     if (pendingScanCode) {
       addKECode(pendingScanCode);
       pendingScanCode = null;
+    } else {
+      tryDecodeFromCapture(canvas);
     }
     
     const frame = document.getElementById('ke-cam-frame');
@@ -1603,6 +1598,48 @@
     renderSectionPhotos(section);
     renderPhotoTypes(section);
     closeKEModal();
+  }
+
+  function tryDecodeFromCapture(canvas) {
+    const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
+    const isSN = pt?.isSN;
+    if (typeof ZXing !== 'undefined') {
+      try {
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width, h = canvas.height;
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const lum = new ZXing.RGBLuminanceSource(imgData.data, w, h);
+        const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+        const hints = new Map();
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+          ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+          ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+          ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.UPC_A,
+          ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.ITF
+        ]);
+        const reader = new ZXing.MultiFormatReader();
+        reader.setHints(hints);
+        const result = reader.decode(bmp);
+        if (result && result.getText()) {
+          const code = result.getText();
+          if (isSN || isKECode(code)) {
+            addKECode(code);
+            showToast('ШК распознан: ' + code);
+            return;
+          }
+        }
+      } catch(e) {}
+    }
+    const label = isSN ? 'СН' : 'КЕ';
+    const entered = prompt('Номер ' + label + ' не распознан. Введите вручную:');
+    if (entered && entered.trim()) {
+      const code = entered.trim();
+      if (isSN || isKECode(code)) {
+        addKECode(code);
+      } else {
+        showToast('Некорректный номер ' + label);
+      }
+    }
   }
 
   function beepFeedback() {
