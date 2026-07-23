@@ -1338,9 +1338,10 @@
 
       if ('BarcodeDetector' in window) {
         try {
-          const det = new BarcodeDetector({
-            formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417']
-          });
+          const desiredFormats = ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417'];
+          const supportedFormats = await BarcodeDetector.getSupportedFormats();
+          const formats = desiredFormats.filter(f => supportedFormats.includes(f));
+          const det = new BarcodeDetector({ formats: formats.length ? formats : desiredFormats });
           detectFailCount = 0;
           scanTimer = setInterval(async () => {
             if (scanCooldown || video.readyState < 2 || !video.videoWidth) return;
