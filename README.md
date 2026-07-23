@@ -64,11 +64,11 @@ PWA for creating technical maintenance reports for Magnit retail stores.
 
 | Type | [EN] | [RU] | Equipment |
 |------|-------|------|-----------|
-| MK | Cosmetics | Магнит Косметик | Checkout, TD, Handheld, UKS, Printer, St. printer |
-| MM(UKS) | Supermarket (UKS) | Супермаркет (УКС) | Checkout zone, Self-checkout, TD, Handheld, UKS, Scales, Printer, St. printer |
-| MM(RMD) | Supermarket (RMD) | Супермаркет (РМД) | Checkout zone, Self-checkout, TD, Handheld, RMD, Scales, Printer, St. printer |
-| MA | Pharmacy | Магнит Аптека | Checkout zone, TD, Handheld, UKS, St. printer |
-| GM | Hypermarket | Магнит Гипермаркет | Server, Checkout zone, Self-checkout, TD, Handheld, Scales (floor/Self/print), Printer, St. printer |
+| MK | Cosmetics | Магнит Косметик | Checkout zone, TD, Handheld, UKS, Mobile printer, Thermal printer |
+| MM(UKS) | Supermarket (UKS) | Супермаркет (УКС) | Checkout zone, Self-checkout, TD, Handheld, UKS, Scales, Mobile printer, Thermal printer |
+| MM(RMD) | Supermarket (RMD) | Супермаркет (РМД) | Checkout zone, Self-checkout, TD, Handheld, RMD, Scales, Mobile printer, Thermal printer |
+| MA | Pharmacy | Магнит Аптека | Checkout zone, TD, Handheld, UKS, Thermal printer |
+| GM | Hypermarket | Магнит Гипермаркет | Server room, Checkout zone, Self-checkout, TD, Handheld, Scales (floor/self/print), Mobile printer, Thermal printer |
 
 ---
 
@@ -159,7 +159,7 @@ Serial numbers:
 
 ## Settings / Настройки
 
-- **Photo quality:** Economy (1024px), Medium (1920px), High (3264px)
+- **Photo quality:** Economy (1024px), Medium (1920px), High (3264px) — always resized to 1280px max
 - **Scanner quality:** Low (640×480), Medium (1280×720), High (1920×1080)
 - **Dark theme:** toggle switch, saved to localStorage
 
@@ -167,7 +167,7 @@ Serial numbers:
 
 - Red "?" button in the header (between logo and menu)
 - Tap again to close (returns to previous page)
-- Usage guide: report creation, photography (short tap / long press), scanner, gallery, completion, export
+- Usage guide: report creation, photography (short tap / left 60px zone / long press), scanner, gallery, completion, export
 
 ---
 

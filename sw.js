@@ -1,4 +1,4 @@
-const CACHE_NAME = 'foto-reports-v18';
+const CACHE_NAME = 'foto-reports-v19';
 
 const PRECACHE = [
   './',

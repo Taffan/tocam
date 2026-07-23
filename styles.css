@@ -337,11 +337,6 @@ body {
   height: 20px;
 }
 
-.btn-icon-sm {
-  width: 18px;
-  height: 18px;
-}
-
 .btn-primary {
   background: var(--primary);
   color: white;
@@ -373,21 +368,6 @@ body {
 .btn-success {
   background: var(--success);
   color: white;
-}
-
-.btn-success.btn-disabled {
-  background: #CCC;
-  cursor: not-allowed;
-}
-
-.btn-outline {
-  background: transparent;
-  border: 2px solid var(--border);
-  color: var(--text-primary);
-}
-
-.btn-outline:active {
-  background: var(--surface);
 }
 
 .btn-text {
@@ -653,24 +633,6 @@ body {
 .complete-loading {
   margin: 16px 0;
   display: none;
-}
-
-.complete-loading.show {
-  display: block;
-}
-
-.complete-actions.hidden {
-  display: none;
-}
-
-.progress-animate {
-  width: 100%;
-  animation: progressPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes progressPulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
 }
 
 /* Checklist */
@@ -2089,7 +2051,6 @@ body {
 @media screen and (max-width: 480px) {
   html, body {
     overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
   }
   
   .page {
@@ -2098,7 +2059,14 @@ body {
     overflow-x: hidden;
   }
   
-  .page.hidden {
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+
+.page.hidden {
     display: none !important;
   }
   

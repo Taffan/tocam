@@ -35,7 +35,6 @@
   let galleryPreviewActive = false;
   let equipmentCounts = {};
   let videoStream = null;
-  let lastScannedCode = null;
   let autoSaveTimer = null;
   let scanCooldown = false;
   let scanTimer = null;
@@ -946,7 +945,7 @@
         if (pt?.isKE || pt?.isSN) {
           const photo = section.photos.find(p => p.typeId === typeId);
           if (photo) openPhotoPreview(section, pt, photo);
-          else openKEScanner();
+          else openKEModal();
         } else {
           const existing = section.photos.filter(p => p.typeId === typeId);
           if (existing.length > 0) openPhotoGallery(section, pt);
@@ -1045,13 +1044,6 @@
   function handleGallerySelect(e) {
     Array.from(e.target.files).forEach(file => processImage(file));
     e.target.value = '';
-  }
-
-  function getPhotoMaxSize() {
-    const q = localStorage.getItem('photoQuality') || 'medium';
-    if (q === 'low') return 1024;
-    if (q === 'high') return 3264;
-    return 1920;
   }
 
   function getScannerRes() {
@@ -1302,14 +1294,6 @@
     showToast('Секция сохранена');
   }
 
-  function isIOS() {
-    return /iPad|iPhone|iPod/.test(navigator.userAgent);
-  }
-
-  async function openKEScanner() {
-    openKEModal();
-  }
-
   async function openKEModal() {
     const modal = document.getElementById('ke-camera-modal');
     const video = document.getElementById('ke-cam-video');
@@ -1334,7 +1318,6 @@
       videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', ...getScannerRes() } });
       video.srcObject = videoStream;
       try { await video.play(); } catch(e) {}
-      lastScannedCode = null;
       scanCooldown = false;
 
       if ('BarcodeDetector' in window) {
@@ -1533,23 +1516,6 @@
     }
   }
 
-  function onScanCodeFound(code) {
-    if (!code || !code.trim()) return;
-    const isNewCode = !pendingScanCode || pendingScanCode !== code;
-    if (isNewCode && scanCooldown) return;
-    const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
-    if (!pt?.isSN && !isKECode(code)) return;
-    if (isNewCode) {
-      selectBarcodeCode(code);
-      return;
-    }
-    const frame = document.getElementById('ke-cam-frame');
-    const status = document.getElementById('ke-cam-status');
-    if (frame) frame.classList.add('detected');
-    const label = pt?.isSN ? 'СН' : 'КЕ';
-    if (status) { status.textContent = `✓ ${label}: ${code}`; status.className = 'ke-cam-status found'; }
-  }
-
   function toggleTorch() {
     const btn = document.getElementById('ke-cam-torch');
     const track = videoStream?.getVideoTracks()[0];
@@ -1581,8 +1547,6 @@
     if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
     if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
     if (video && video.srcObject) { video.srcObject = null; }
-    if (window._zxingCv) { window._zxingCv.remove(); window._zxingCv = null; }
-    if (window._zxingReader) { window._zxingReader.reset(); window._zxingReader = null; }
     if (window._zxingBrowserReader) { window._zxingBrowserReader.reset(); window._zxingBrowserReader = null; }
     if (window._zxingOverlayTimer) { clearInterval(window._zxingOverlayTimer); window._zxingOverlayTimer = null; }
     window._zxingDetectedCodes = null;
@@ -1666,24 +1630,6 @@
         showToast('Некорректный номер ' + label);
       }
     }
-  }
-
-  function beepFeedback() {
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(1800, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.08);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.12);
-      osc.onended = () => ctx.close();
-    } catch(e) {}
   }
 
   function addKECode(code, isSN) {
@@ -1851,9 +1797,7 @@
 
         itemNum++;
         let filename = pt.filename;
-        if (pt.multi && photo.photoNumber > 1) {
-          filename = filename.replace('.jpg', ` ${photo.photoNumber}.jpg`);
-        }
+        filename = filename.replace('.jpg', ` ${photo.photoNumber}.jpg`);
 
         ws_data.push([
           String(itemNum),
@@ -1938,9 +1882,7 @@
         const pt = sec.photoTypes.find(t => t.id === photo.typeId);
         if (pt) {
           let filename = pt.filename;
-          if (pt.multi && photo.photoNumber > 1) {
-            filename = filename.replace('.jpg', ` ${photo.photoNumber}.jpg`);
-          }
+          filename = filename.replace('.jpg', ` ${photo.photoNumber}.jpg`);
           photos.push({
             section: sec.name,
             filename: filename,
@@ -1979,26 +1921,22 @@
 
     zip.file('report.json', JSON.stringify(generateReportJSON(), null, 2));
 
-    let itemNum = 0;
     let photoCount = 0;
     for (const sec of currentReport.sections) {
       for (const photo of sec.photos) {
         const pt = sec.photoTypes.find(t => t.id === photo.typeId);
         if (!pt) continue;
-        itemNum++;
         photoCount++;
         if (!photo.dataUrl) continue;
         const base64 = photo.dataUrl.split(',')[1] || '';
         let filename = pt.filename;
-        if (pt.multi && photo.photoNumber > 1) {
-          filename = filename.replace('.jpg', ` ${photo.photoNumber}.jpg`);
-        }
+        filename = filename.replace('.jpg', ` ${photo.photoNumber}.jpg`);
         if (pt.isKE) {
           zip.file(`КЕ/${filename}`, base64, { base64: true });
         } else if (pt.isSN) {
           zip.file(`Серийные номера/${filename}`, base64, { base64: true });
         } else {
-          zip.file(`${itemNum}# ${filename}`, base64, { base64: true });
+          zip.file(filename, base64, { base64: true });
         }
       }
     }
