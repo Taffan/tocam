@@ -37,8 +37,6 @@ html, body {
 }
 
 body {
-  padding-top: env(safe-area-inset-top, 0);
-  padding-bottom: env(safe-area-inset-bottom, 0);
   padding-left: 0;
   padding-right: 0;
 }
@@ -251,8 +249,8 @@ body {
 
 /* Main */
 .main {
-  padding-top: 60px;
-  padding-bottom: 20px;
+  padding-top: calc(60px + env(safe-area-inset-top));
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
   min-height: 100vh;
 }
 
@@ -2165,6 +2163,7 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
 }
 
 .preview-back {
@@ -2194,6 +2193,7 @@ body {
   object-fit: contain;
   width: 100%;
   display: block;
+  min-height: 0;
 }
 
 .preview-actions {

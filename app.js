@@ -2019,7 +2019,7 @@
     }
     zip.file('Коды.txt', lines.join('\n'));
 
-    return await zip.generateAsync({ type: 'blob' });
+    return await zip.generateAsync({ type: 'blob', compression: 'STORE' });
   }
 
   function showToast(msg) {
