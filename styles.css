@@ -1681,6 +1681,8 @@ body {
   border-radius: 12px;
   box-shadow: 0 0 30px rgba(220, 0, 0, 0.3);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  z-index: 2;
+  pointer-events: none;
 }
 
 .ke-cam-frame.detected {
@@ -1758,6 +1760,7 @@ body {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
+  z-index: 1;
 }
 
 .ke-cam-overlay-box {

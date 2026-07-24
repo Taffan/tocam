@@ -1435,12 +1435,16 @@
     window._zxingBrowserReader.decodeFromVideoElementContinuously(video, (result, err) => {
       if (result) {
         const code = result.getText();
-        if (code && !pendingScanCode) {
+        if (pendingScanCode) {
+          updateTrackingUI(code === pendingScanCode);
+        } else if (code) {
           const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
           if (pt?.isSN || isKECode(code)) {
             window._zxingDetectedCodes.set(code, Date.now());
           }
         }
+      } else if (pendingScanCode) {
+        updateTrackingUI(false);
       }
     });
   }
