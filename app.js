@@ -1326,8 +1326,9 @@
       scanCooldown = false;
 
       if (localStorage.getItem('scannerQuality') === 'ios') {
-        if (typeof ZXing !== 'undefined') initZXingScannerInterval(video);
-        else showToast('Сканер не поддерживается — используйте фото');
+        if (typeof ZXing !== 'undefined') {
+          (function waitReady(n) { if (modal.classList.contains('hidden')) return; if (video.readyState >= 2 && video.videoWidth > 0) initZXingScannerInterval(video); else if (n < 50) setTimeout(waitReady, 100, n + 1); })(0);
+        } else showToast('Сканер не поддерживается — используйте фото');
       } else if ('BarcodeDetector' in window) {
         try {
           const det = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417'] });
@@ -1473,12 +1474,8 @@
     ]);
     window._zxingDetectedCodes = new Map();
     window._zxingOverlayTimer = setInterval(renderZXingOverlays, 500);
-    window._zxingBrowserReader = new ZXing.BrowserMultiFormatReader(hints, 400);
-    let lastDecode = 0;
+    window._zxingBrowserReader = new ZXing.BrowserMultiFormatReader(hints, 200);
     window._zxingBrowserReader.decodeFromVideoElementContinuously(video, (result, err) => {
-      const now = Date.now();
-      if (now - lastDecode < 150) return;
-      lastDecode = now;
       if (result) {
         const code = result.getText();
         if (pendingScanCode) {
