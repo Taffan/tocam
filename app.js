@@ -1352,11 +1352,10 @@
               }
             }, 300);
           };
-          if (video.readyState >= 2 && video.videoWidth) {
-            startDetect();
-          } else {
-            video.addEventListener('canplay', startDetect, { once: true });
-          }
+          (function waitVideo() {
+            if (video.readyState >= 2 && video.videoWidth > 0) startDetect();
+            else setTimeout(waitVideo, 100);
+          })();
         } catch(e) {
           if (typeof ZXing !== 'undefined') initZXingScanner(video);
           else showToast('Сканер не поддерживается — используйте фото');
@@ -1449,7 +1448,8 @@
         } else if (code) {
           const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
           if (pt?.isSN || isKECode(code)) {
-            window._zxingDetectedCodes.set(code, Date.now());
+            const pts = result.getResultPoints();
+            window._zxingDetectedCodes.set(code, { time: Date.now(), pts });
           }
         }
       } else if (pendingScanCode) {
@@ -1468,18 +1468,52 @@
     }
     const now = Date.now();
     if (window._zxingDetectedCodes) {
-      for (const [code, ts] of window._zxingDetectedCodes) {
-        if (now - ts > 3000) window._zxingDetectedCodes.delete(code);
+      for (const [code, data] of window._zxingDetectedCodes) {
+        if (now - data.time > 3000) window._zxingDetectedCodes.delete(code);
       }
     }
     if (!window._zxingDetectedCodes || window._zxingDetectedCodes.size === 0) {
       if (container.innerHTML) container.innerHTML = '';
       return;
     }
+    const wrap = container.parentElement;
+    const cw = wrap.clientWidth;
+    const ch = wrap.clientHeight;
+    const video = document.getElementById('ke-cam-video');
+    const vw = video ? video.videoWidth : cw;
+    const vh = video ? video.videoHeight : ch;
+    if (!cw || !ch || !vw || !vh) return;
+    const scaleX = cw / vw;
+    const scaleY = ch / vh;
     let html = '';
     let idx = 0;
-    for (const code of window._zxingDetectedCodes.keys()) {
-      html += `<div class="ke-cam-overlay-box" data-code="${code}" style="left:5%;top:${20 + idx * 14}%;width:90%;height:auto;min-height:32px"><span class="ke-cam-overlay-label">${code}</span></div>`;
+    for (const [code, data] of window._zxingDetectedCodes) {
+      const pts = data.pts;
+      let bx;
+      if (pts && pts.length >= 2) {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const p of pts) {
+          const px = p.getX(), py = p.getY();
+          if (px < minX) minX = px;
+          if (py < minY) minY = py;
+          if (px > maxX) maxX = px;
+          if (py > maxY) maxY = py;
+        }
+        const pad = 10;
+        bx = {
+          x: Math.max(0, minX - pad),
+          y: Math.max(0, minY - pad),
+          width: maxX - minX + pad * 2,
+          height: Math.max(24, maxY - minY + pad * 2)
+        };
+      } else {
+        bx = { x: vw * 0.2, y: vh * 0.35, width: vw * 0.6, height: vh * 0.3 };
+      }
+      const left = Math.max(0, bx.x * scaleX);
+      const top = Math.max(0, bx.y * scaleY);
+      const w = Math.min(cw - left, bx.width * scaleX);
+      const h = Math.min(ch - top, bx.height * scaleY);
+      html += `<div class="ke-cam-overlay-box" data-code="${code}" style="left:${left}px;top:${top}px;width:${w}px;height:${h}px"><span class="ke-cam-overlay-label">${idx+1}: ${code}</span></div>`;
       idx++;
     }
     if (container.innerHTML !== html) {

@@ -1735,24 +1735,7 @@ body {
 }
 
 .ke-cam-scan-line {
-  position: absolute;
-  left: 8%;
-  right: 8%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--primary), transparent);
-  animation: keScanLine 2s ease-in-out infinite;
-  opacity: 0.6;
-}
-
-.ke-cam-frame.detected .ke-cam-scan-line {
-  background: linear-gradient(90deg, transparent, var(--success), transparent);
-  opacity: 1;
-}
-
-@keyframes keScanLine {
-  0% { top: 8%; }
-  50% { top: 92%; }
-  100% { top: 8%; }
+  display: none;
 }
 
 .ke-cam-overlays {
