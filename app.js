@@ -595,6 +595,8 @@
     document.getElementById('input-type').value = type;
     renderEquipmentConfig(type);
     updateConfigButton();
+    const nameInput = document.getElementById('input-object-name');
+    if (nameInput) { nameInput.focus(); nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   }
 
   function renderEquipmentConfig(type) {
