@@ -382,6 +382,7 @@
       const confirmBar = document.getElementById('ke-cam-confirm');
       const overlays = document.getElementById('ke-cam-overlays');
       pendingScanCode = confirmBar.dataset.code || null;
+      scanCooldown = false;
       confirmBar.classList.add('hidden');
       if (overlays) overlays.innerHTML = '';
       const status = document.getElementById('ke-cam-status');
@@ -1329,25 +1330,33 @@
           const formats = desiredFormats.filter(f => supportedFormats.includes(f));
           const det = new BarcodeDetector({ formats: formats.length ? formats : desiredFormats });
           detectFailCount = 0;
-          scanTimer = setInterval(async () => {
-            if (scanCooldown || video.readyState < 2 || !video.videoWidth) return;
-            try {
-              const codes = await det.detect(video);
-              detectFailCount = 0;
-              if (pendingScanCode) {
-                updateTrackingUI(codes.some(c => c.rawValue === pendingScanCode));
-              } else {
-                showBarcodeOverlays(codes, video.videoWidth, video.videoHeight);
+          const startDetect = () => {
+            if (scanTimer) return;
+            scanTimer = setInterval(async () => {
+              if (scanCooldown || video.readyState < 2 || !video.videoWidth) return;
+              try {
+                const codes = await det.detect(video);
+                detectFailCount = 0;
+                if (pendingScanCode) {
+                  updateTrackingUI(codes.some(c => c.rawValue === pendingScanCode));
+                } else {
+                  showBarcodeOverlays(codes, video.videoWidth, video.videoHeight);
+                }
+              } catch(e) {
+                detectFailCount++;
+                if (detectFailCount > 10) {
+                  clearInterval(scanTimer); scanTimer = null;
+                  if (typeof ZXing !== 'undefined') initZXingScanner(video);
+                  else showToast('Сканер не поддерживается — используйте фото');
+                }
               }
-            } catch(e) {
-              detectFailCount++;
-              if (detectFailCount > 10) {
-                clearInterval(scanTimer); scanTimer = null;
-                if (typeof ZXing !== 'undefined') initZXingScanner(video);
-                else showToast('Сканер не поддерживается — используйте фото');
-              }
-            }
-          }, 300);
+            }, 300);
+          };
+          if (video.readyState >= 2 && video.videoWidth) {
+            startDetect();
+          } else {
+            video.addEventListener('canplay', startDetect, { once: true });
+          }
         } catch(e) {
           if (typeof ZXing !== 'undefined') initZXingScanner(video);
           else showToast('Сканер не поддерживается — используйте фото');
