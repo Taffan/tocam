@@ -1401,7 +1401,11 @@
       if (isSN) return true;
       return isKECode(c.rawValue);
     });
-    const codeSet = detected.map(c => c.rawValue).sort().join('|');
+    const codeSet = detected.map(c => {
+      const bx = c.boundingBox;
+      const pos = bx && typeof bx.x === 'number' ? `${bx.x.toFixed(0)},${bx.y.toFixed(0)},${bx.width.toFixed(0)},${bx.height.toFixed(0)}` : '';
+      return c.rawValue + '|' + pos;
+    }).sort().join('||');
     if (!detected.length) {
       if (cachedOverlayCodes !== '') { container.innerHTML = ''; cachedOverlayCodes = ''; }
       return;
