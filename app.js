@@ -1473,13 +1473,13 @@
     ]);
     window._zxingDetectedCodes = new Map();
     window._zxingOverlayTimer = setInterval(renderZXingOverlays, 500);
-    const reader = new ZXing.BrowserMultiFormatReader(hints, 200);
-    let decoding = false;
-    window._zxingScanTimer = setInterval(() => {
-      if (decoding || scanCooldown || video.readyState < 2 || !video.videoWidth) return;
-      decoding = true;
-      reader.decodeFromVideoElement(video).then(result => {
-        decoding = false;
+    window._zxingBrowserReader = new ZXing.BrowserMultiFormatReader(hints, 400);
+    let lastDecode = 0;
+    window._zxingBrowserReader.decodeFromVideoElementContinuously(video, (result, err) => {
+      const now = Date.now();
+      if (now - lastDecode < 150) return;
+      lastDecode = now;
+      if (result) {
         const code = result.getText();
         if (pendingScanCode) {
           updateTrackingUI(code === pendingScanCode);
@@ -1490,11 +1490,10 @@
             window._zxingDetectedCodes.set(code, { time: Date.now(), pts });
           }
         }
-      }).catch(() => {
-        decoding = false;
-        if (pendingScanCode) updateTrackingUI(false);
-      });
-    }, 150);
+      } else if (pendingScanCode) {
+        updateTrackingUI(false);
+      }
+    });
   }
 
   function renderZXingOverlays() {
