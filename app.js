@@ -1325,14 +1325,10 @@
       try { await video.play(); } catch(e) {}
       scanCooldown = false;
 
-      const q = localStorage.getItem('scannerQuality') || 'medium';
-      const isIOSMode = q === 'ios';
-      const scanInterval = isIOSMode ? 150 : 300;
-      const silentThreshold = isIOSMode ? 30 : 15;
-      const failThreshold = isIOSMode ? 20 : 10;
-      const initZXing = isIOSMode ? initZXingScannerInterval : initZXingScanner;
-
-      if ('BarcodeDetector' in window) {
+      if (localStorage.getItem('scannerQuality') === 'ios') {
+        if (typeof ZXing !== 'undefined') initZXingScannerInterval(video);
+        else showToast('Сканер не поддерживается — используйте фото');
+      } else if ('BarcodeDetector' in window) {
         try {
           const det = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417'] });
           detectFailCount = 0;
@@ -1350,27 +1346,27 @@
                 } else if (codes.length) {
                   showBarcodeOverlays(codes, video.videoWidth, video.videoHeight);
                 }
-                if (silentCount > silentThreshold && typeof ZXing !== 'undefined') {
+                if (silentCount > 15 && typeof ZXing !== 'undefined') {
                   clearInterval(scanTimer); scanTimer = null;
-                  initZXing(video);
+                  initZXingScanner(video);
                 }
               } catch(e) {
                 detectFailCount++;
-                if (detectFailCount > failThreshold) {
+                if (detectFailCount > 10) {
                   clearInterval(scanTimer); scanTimer = null;
-                  if (typeof ZXing !== 'undefined') initZXing(video);
+                  if (typeof ZXing !== 'undefined') initZXingScanner(video);
                   else showToast('Сканер не поддерживается — используйте фото');
                 }
               }
-            }, scanInterval);
+            }, 300);
           };
-          (function waitReady(n) { if (video.readyState >= 2 && video.videoWidth > 0) startDetect(); else if (n < 25) setTimeout(waitReady, 200, n + 1); else if (typeof ZXing !== 'undefined') initZXing(video); })(0);
+          (function waitReady(n) { if (video.readyState >= 2 && video.videoWidth > 0) startDetect(); else if (n < 25) setTimeout(waitReady, 200, n + 1); else if (typeof ZXing !== 'undefined') initZXingScanner(video); })(0);
         } catch(e) {
-          if (typeof ZXing !== 'undefined') initZXing(video);
+          if (typeof ZXing !== 'undefined') initZXingScanner(video);
           else showToast('Сканер не поддерживается — используйте фото');
         }
       } else if (typeof ZXing !== 'undefined') {
-        initZXing(video);
+        initZXingScanner(video);
       } else {
         showToast('Сканер не поддерживается — используйте фото');
       }
@@ -1477,37 +1473,27 @@
     ]);
     window._zxingDetectedCodes = new Map();
     window._zxingOverlayTimer = setInterval(renderZXingOverlays, 500);
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const reader = new ZXing.MultiFormatReader();
-    reader.setHints(hints);
+    const reader = new ZXing.BrowserMultiFormatReader(hints, 200);
+    let decoding = false;
     window._zxingScanTimer = setInterval(() => {
-      if (scanCooldown || video.readyState < 2 || !video.videoWidth) return;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0);
-      try {
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const lum = new ZXing.RGBLuminanceSource(imgData.data, canvas.width, canvas.height);
-        const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
-        const result = reader.decode(bmp);
-        if (result) {
-          const code = result.getText();
-          if (pendingScanCode) {
-            updateTrackingUI(code === pendingScanCode);
-          } else if (code) {
-            const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
-            if (pt?.isSN || isKECode(code)) {
-              const pts = result.getResultPoints();
-              window._zxingDetectedCodes.set(code, { time: Date.now(), pts });
-            }
+      if (decoding || scanCooldown || video.readyState < 2 || !video.videoWidth) return;
+      decoding = true;
+      reader.decodeFromVideoElement(video).then(result => {
+        decoding = false;
+        const code = result.getText();
+        if (pendingScanCode) {
+          updateTrackingUI(code === pendingScanCode);
+        } else if (code) {
+          const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
+          if (pt?.isSN || isKECode(code)) {
+            const pts = result.getResultPoints();
+            window._zxingDetectedCodes.set(code, { time: Date.now(), pts });
           }
-        } else if (pendingScanCode) {
-          updateTrackingUI(false);
         }
-      } catch(e) {
+      }).catch(() => {
+        decoding = false;
         if (pendingScanCode) updateTrackingUI(false);
-      }
+      });
     }, 150);
   }
 
