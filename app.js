@@ -1325,22 +1325,25 @@
 
       if ('BarcodeDetector' in window) {
         try {
-          const desiredFormats = ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417'];
-          const supportedFormats = await BarcodeDetector.getSupportedFormats();
-          const formats = desiredFormats.filter(f => supportedFormats.includes(f));
-          const det = new BarcodeDetector({ formats: formats.length ? formats : desiredFormats });
+          const det = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417'] });
           detectFailCount = 0;
+          let silentCount = 0;
           const startDetect = () => {
             if (scanTimer) return;
             scanTimer = setInterval(async () => {
               if (scanCooldown || video.readyState < 2 || !video.videoWidth) return;
               try {
                 const codes = await det.detect(video);
-                detectFailCount = 0;
+                if (codes.length) silentCount = 0; else silentCount++;
+                if (detectFailCount) detectFailCount = 0;
                 if (pendingScanCode) {
                   updateTrackingUI(codes.some(c => c.rawValue === pendingScanCode));
-                } else {
+                } else if (codes.length) {
                   showBarcodeOverlays(codes, video.videoWidth, video.videoHeight);
+                }
+                if (silentCount > 15 && typeof ZXing !== 'undefined') {
+                  clearInterval(scanTimer); scanTimer = null;
+                  initZXingScanner(video);
                 }
               } catch(e) {
                 detectFailCount++;
@@ -1352,10 +1355,7 @@
               }
             }, 300);
           };
-          (function waitVideo() {
-            if (video.readyState >= 2 && video.videoWidth > 0) startDetect();
-            else setTimeout(waitVideo, 100);
-          })();
+          (function waitReady() { if (video.readyState >= 2 && video.videoWidth > 0) startDetect(); else setTimeout(waitReady, 200); })();
         } catch(e) {
           if (typeof ZXing !== 'undefined') initZXingScanner(video);
           else showToast('Сканер не поддерживается — используйте фото');
