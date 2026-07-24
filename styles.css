@@ -1567,12 +1567,16 @@ body {
 .equipment-name {
   flex: 1;
   font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .equipment-count {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .equipment-count input {
