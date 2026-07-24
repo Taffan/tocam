@@ -1355,7 +1355,7 @@
               }
             }, 300);
           };
-          (function waitReady() { if (video.readyState >= 2 && video.videoWidth > 0) startDetect(); else setTimeout(waitReady, 200); })();
+          (function waitReady(n) { if (video.readyState >= 2 && video.videoWidth > 0) startDetect(); else if (n < 25) setTimeout(waitReady, 200, n + 1); else if (typeof ZXing !== 'undefined') initZXingScanner(video); })(0);
         } catch(e) {
           if (typeof ZXing !== 'undefined') initZXingScanner(video);
           else showToast('Сканер не поддерживается — используйте фото');
