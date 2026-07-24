@@ -1,7 +1,7 @@
 (function() {
   'use strict';
 
-  let APP_VERSION = localStorage.getItem('appVersion') || '1.0.5.6';
+  let APP_VERSION = localStorage.getItem('appVersion') || '1.0.5.8';
 
   const verEl = document.getElementById('settings-version-number');
   if (verEl) verEl.textContent = APP_VERSION;
@@ -213,33 +213,33 @@
   }
 
   function performUpdate() {
-    if (!navigator.onLine) {
-      showToast('Обновление недоступно без интернета');
-      return;
-    }
     document.getElementById('menu-dropdown').classList.add('hidden');
     showToast('Обновление...');
-    _updatePendingReload = true;
     const doReload = (ver) => {
       localStorage.setItem('appVersion', String(ver || 1));
       location.reload();
     };
     if (_swReg && _swReg.waiting) {
+      _updatePendingReload = true;
       _swReg.waiting.postMessage('SKIP_WAITING');
-    } else {
-      const cleanup = () => {
-        if ('caches' in window) {
-          caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
-            if (_updateBubble) doReload(_updateBubble);
-            else fetch('version.json?t=' + Date.now(), { cache: 'no-cache' }).then(r => r.json()).then(d => doReload(d.version)).catch(() => doReload(1));
-          });
-        } else {
-          if (_updateBubble) doReload(_updateBubble);
-          else fetch('version.json?t=' + Date.now(), { cache: 'no-cache' }).then(r => r.json()).then(d => doReload(d.version)).catch(() => doReload(1));
-        }
-      };
-      cleanup();
+      return;
     }
+    fetch('version.json?t=' + Date.now(), { cache: 'no-cache' })
+      .then(r => r.json())
+      .then(d => {
+        _updatePendingReload = true;
+        const cleanup = () => {
+          if ('caches' in window) {
+            caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
+              doReload(d.version);
+            });
+          } else {
+            doReload(d.version);
+          }
+        };
+        cleanup();
+      })
+      .catch(() => showToast('Обновление недоступно без интернета'));
   }
 
   if ('serviceWorker' in navigator) {
@@ -421,7 +421,7 @@
     // Settings
     function loadSettings() {
       const photoQuality = localStorage.getItem('photoQuality') || 'medium';
-      const scannerQuality = localStorage.getItem('scannerQuality') || 'medium';
+      const scannerQuality = localStorage.getItem('scannerQuality') || (/iPad|iPhone|iPod/.test(navigator.userAgent) ? 'ios' : 'medium');
       const darkTheme = localStorage.getItem('darkTheme') === 'true';
       const savedTechnician = localStorage.getItem('technician') || '';
 
@@ -1050,7 +1050,7 @@
   }
 
   function getScannerRes() {
-    const q = localStorage.getItem('scannerQuality') || 'medium';
+    const q = localStorage.getItem('scannerQuality') || (/iPad|iPhone|iPod/.test(navigator.userAgent) ? 'ios' : 'medium');
     if (q === 'low') return { width: { ideal: 640 }, height: { ideal: 480 } };
     if (q === 'high') return { width: { ideal: 1920 }, height: { ideal: 1080 } };
     if (q === 'ios') return { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };

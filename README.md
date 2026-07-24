@@ -152,7 +152,7 @@ Serial numbers:
 - **KE mode:** 13-digit EAN-13 or 4-digit codes only (digits)
 - **SN mode:** any barcode or QR code accepted
 - Flicker-free overlays (cached code set, no DOM rebuild on unchanged frames)
-- Scanner resolution settings: Low (640×480), Medium (1280×720), High (1920×1080)
+- Scanner resolution settings: Low (640×480), Medium (1280×720), High (1920×1080), iOS (720p/ZXing, default on iPhone/iPad)
 - Torch/flashlight toggle button in scanner (KE/SN)
 - Long press (1.5s) on any photo type button to pick from device gallery
 - Sound + vibration
@@ -160,7 +160,7 @@ Serial numbers:
 ## Settings / Настройки
 
 - **Photo quality:** Economy (1024px), Medium (1920px), High (3264px) — always resized to 1280px max
-- **Scanner quality:** Low (640×480), Medium (1280×720), High (1920×1080)
+- **Scanner quality:** Low (640×480), Medium (1280×720), High (1920×1080), iOS (720p/ZXing, default on iPhone/iPad)
 - **Dark theme:** toggle switch, saved to localStorage
 
 ## Help / Справка
