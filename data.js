@@ -19,7 +19,7 @@ const TYPE_CONFIGS = {
     separator: ' # ',
     equipment: [
       { id: 'kassa_zona', name: 'Кассовая зона', icon: 'kassa' },
-      { id: 'kso', name: 'Касса самообслуживания', icon: 'kso' },
+      { id: 'kso', name: 'КСО', icon: 'kso' },
       { id: 'td', name: 'ТД', icon: 'td' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
       { id: 'uks', name: 'Универсальный кассовый стол (УКС)', icon: 'uks' },
@@ -35,7 +35,7 @@ const TYPE_CONFIGS = {
     separator: ' # ',
     equipment: [
       { id: 'kassa_zona', name: 'Кассовая зона', icon: 'kassa' },
-      { id: 'kso', name: 'Касса самообслуживания', icon: 'kso' },
+      { id: 'kso', name: 'КСО', icon: 'kso' },
       { id: 'td', name: 'ТД', icon: 'td' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
       { id: 'rmd', name: 'Рабочее место директора (РМД)', icon: 'rmd' },
@@ -65,7 +65,7 @@ const TYPE_CONFIGS = {
     equipment: [
       { id: 'server', name: 'Серверная', icon: 'server' },
       { id: 'kassa_zona', name: 'Кассовая зона', icon: 'kassa' },
-      { id: 'kso', name: 'Касса самообслуживания', icon: 'kso' },
+      { id: 'kso', name: 'КСО', icon: 'kso' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
       { id: 'vesi_napolnie', name: 'Весы напольные', icon: 'vesi' },
       { id: 'vesi_samoobsl', name: 'Весы самообслуживания', icon: 'vesi' },
