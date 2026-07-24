@@ -1053,6 +1053,7 @@
     const q = localStorage.getItem('scannerQuality') || 'medium';
     if (q === 'low') return { width: { ideal: 640 }, height: { ideal: 480 } };
     if (q === 'high') return { width: { ideal: 1920 }, height: { ideal: 1080 } };
+    if (q === 'ios') return { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
     return { width: { ideal: 1280 }, height: { ideal: 720 } };
   }
 
@@ -1316,12 +1317,20 @@
 
     try {
       if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+      if (window._zxingScanTimer) { clearInterval(window._zxingScanTimer); window._zxingScanTimer = null; }
       if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); }
 
       videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', ...getScannerRes() } });
       video.srcObject = videoStream;
       try { await video.play(); } catch(e) {}
       scanCooldown = false;
+
+      const q = localStorage.getItem('scannerQuality') || 'medium';
+      const isIOSMode = q === 'ios';
+      const scanInterval = isIOSMode ? 150 : 300;
+      const silentThreshold = isIOSMode ? 30 : 15;
+      const failThreshold = isIOSMode ? 20 : 10;
+      const initZXing = isIOSMode ? initZXingScannerInterval : initZXingScanner;
 
       if ('BarcodeDetector' in window) {
         try {
@@ -1341,27 +1350,27 @@
                 } else if (codes.length) {
                   showBarcodeOverlays(codes, video.videoWidth, video.videoHeight);
                 }
-                if (silentCount > 15 && typeof ZXing !== 'undefined') {
+                if (silentCount > silentThreshold && typeof ZXing !== 'undefined') {
                   clearInterval(scanTimer); scanTimer = null;
-                  initZXingScanner(video);
+                  initZXing(video);
                 }
               } catch(e) {
                 detectFailCount++;
-                if (detectFailCount > 10) {
+                if (detectFailCount > failThreshold) {
                   clearInterval(scanTimer); scanTimer = null;
-                  if (typeof ZXing !== 'undefined') initZXingScanner(video);
+                  if (typeof ZXing !== 'undefined') initZXing(video);
                   else showToast('Сканер не поддерживается — используйте фото');
                 }
               }
-            }, 300);
+            }, scanInterval);
           };
-          (function waitReady(n) { if (video.readyState >= 2 && video.videoWidth > 0) startDetect(); else if (n < 25) setTimeout(waitReady, 200, n + 1); else if (typeof ZXing !== 'undefined') initZXingScanner(video); })(0);
+          (function waitReady(n) { if (video.readyState >= 2 && video.videoWidth > 0) startDetect(); else if (n < 25) setTimeout(waitReady, 200, n + 1); else if (typeof ZXing !== 'undefined') initZXing(video); })(0);
         } catch(e) {
-          if (typeof ZXing !== 'undefined') initZXingScanner(video);
+          if (typeof ZXing !== 'undefined') initZXing(video);
           else showToast('Сканер не поддерживается — используйте фото');
         }
       } else if (typeof ZXing !== 'undefined') {
-        initZXingScanner(video);
+        initZXing(video);
       } else {
         showToast('Сканер не поддерживается — используйте фото');
       }
@@ -1456,6 +1465,50 @@
         updateTrackingUI(false);
       }
     });
+  }
+
+  function initZXingScannerInterval(video) {
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.UPC_A,
+      ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.ITF
+    ]);
+    window._zxingDetectedCodes = new Map();
+    window._zxingOverlayTimer = setInterval(renderZXingOverlays, 500);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const reader = new ZXing.MultiFormatReader();
+    reader.setHints(hints);
+    window._zxingScanTimer = setInterval(() => {
+      if (scanCooldown || video.readyState < 2 || !video.videoWidth) return;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      try {
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const lum = new ZXing.RGBLuminanceSource(imgData.data, canvas.width, canvas.height);
+        const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+        const result = reader.decode(bmp);
+        if (result) {
+          const code = result.getText();
+          if (pendingScanCode) {
+            updateTrackingUI(code === pendingScanCode);
+          } else if (code) {
+            const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
+            if (pt?.isSN || isKECode(code)) {
+              const pts = result.getResultPoints();
+              window._zxingDetectedCodes.set(code, { time: Date.now(), pts });
+            }
+          }
+        } else if (pendingScanCode) {
+          updateTrackingUI(false);
+        }
+      } catch(e) {
+        if (pendingScanCode) updateTrackingUI(false);
+      }
+    }, 150);
   }
 
   function renderZXingOverlays() {
@@ -1598,6 +1651,7 @@
     if (video && video.srcObject) { video.srcObject = null; }
     if (window._zxingBrowserReader) { window._zxingBrowserReader.reset(); window._zxingBrowserReader = null; }
     if (window._zxingOverlayTimer) { clearInterval(window._zxingOverlayTimer); window._zxingOverlayTimer = null; }
+    if (window._zxingScanTimer) { clearInterval(window._zxingScanTimer); window._zxingScanTimer = null; }
     window._zxingDetectedCodes = null;
   }
 
