@@ -809,7 +809,7 @@
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>' :
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>'}</div>
           <div class="photo-type-content">
-            <div class="photo-type-name">${pt.filename}</div>
+            <div class="photo-type-name">${pt.name}</div>
           </div>
           <div class="photo-type-tap-hint">${isMulti ? `${photoCount}/${maxPhotos}` : (isComplete ? '✓' : isSelected ? 'Нажмите' : 'Нажмите')}</div>
           ${hint ? `<button class="photo-type-hint-btn" data-hint="${hint.replace(/"/g, '&quot;')}" title="Подсказка">?</button>` : ''}
@@ -833,7 +833,7 @@
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>' :
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>'}</div>
             <div class="photo-type-content">
-              <div class="photo-type-name">${pt.filename}</div>
+              <div class="photo-type-name">${pt.name}</div>
             </div>
             ${hasPhoto ? '<div class="photo-type-tap-hint">✓</div>' : ''}
             ${hint ? `<button class="photo-type-hint-btn" data-hint="${hint.replace(/"/g, '&quot;')}" title="Подсказка">?</button>` : ''}
@@ -849,7 +849,7 @@
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>' :
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>'}</div>
             <div class="photo-type-content">
-              <div class="photo-type-name">${pt.filename}</div>
+              <div class="photo-type-name">${pt.name}</div>
             </div>
             ${hasPhoto ? '<div class="photo-type-tap-hint">✓</div>' : ''}
             ${hint ? `<button class="photo-type-hint-btn" data-hint="${hint.replace(/"/g, '&quot;')}" title="Подсказка">?</button>` : ''}
