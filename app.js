@@ -391,7 +391,7 @@
         status.className = 'ke-cam-status';
       }
     });
-    document.getElementById('ke-cam-video').addEventListener('click', keCamCapture);
+    document.getElementById('ke-cam-video').addEventListener('click', () => { if (pendingScanCode) keCamCapture(); });
 
     document.getElementById('preview-ok').addEventListener('click', closePreview);
     document.getElementById('preview-back').addEventListener('click', closePreview);
@@ -1670,7 +1670,7 @@
       } catch(e) {}
     }
     const label = isSN ? 'СН' : 'КЕ';
-    const entered = prompt('Номер ' + label + ' не распознан. Введите вручную:');
+    const entered = prompt('Номер ' + label + ' не распознан. Введите вручную (не обязательно):');
     if (entered && entered.trim()) {
       const code = entered.trim();
       if (isSN || isKECode(code)) {
