@@ -1327,7 +1327,7 @@
 
       if (localStorage.getItem('scannerQuality') === 'ios') {
         if (typeof ZXing !== 'undefined') {
-          (function waitReady(n) { if (modal.classList.contains('hidden')) return; if (video.readyState >= 2 && video.videoWidth > 0) initZXingScannerInterval(video); else if (n < 50) setTimeout(waitReady, 100, n + 1); })(0);
+          (function waitReady(n) { if (modal.classList.contains('hidden')) return; if (video.readyState >= 2 && video.videoWidth > 0) initZXingScannerInterval(video); else if (n < 50) setTimeout(waitReady, 100, n + 1); else initZXingScannerInterval(video); })(0);
         } else showToast('Сканер не поддерживается — используйте фото');
       } else if ('BarcodeDetector' in window) {
         try {
@@ -1538,12 +1538,13 @@
           if (px > maxX) maxX = px;
           if (py > maxY) maxY = py;
         }
-        const pad = 10;
+        const pad = 20;
+        const minDim = 60;
         bx = {
           x: Math.max(0, minX - pad),
           y: Math.max(0, minY - pad),
-          width: maxX - minX + pad * 2,
-          height: Math.max(24, maxY - minY + pad * 2)
+          width: Math.max(minDim, maxX - minX + pad * 2),
+          height: Math.max(minDim, maxY - minY + pad * 2)
         };
       } else {
         bx = { x: vw * 0.2, y: vh * 0.35, width: vw * 0.6, height: vh * 0.3 };
