@@ -347,7 +347,7 @@ function getPhotoTypes(typeId) {
   
   const all = [];
   (types.photo || []).forEach(pt => all.push({ ...pt, isKE: false, isSN: false }));
-  (types.ke || []).forEach(kt => all.push({ ...kt, isKE: true, isSN: false }));
+  (types.ke || []).forEach(kt => all.push({ ...kt, isKE: true, isSN: false, multi: true, maxPhotos: 2 }));
   (types.sn || []).forEach(sn => all.push({ ...sn, isKE: false, isSN: true }));
   
   return all;

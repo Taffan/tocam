@@ -328,6 +328,13 @@
           <input type="text" id="settings-technician" class="settings-input" placeholder="Иванов И.И.">
         </div>
         <div class="settings-group">
+          <h3>Хранилище отчётов</h3>
+          <p class="settings-desc">Резервное копирование в localStorage (до сброса кэша)</p>
+          <p class="settings-desc" style="color:var(--text-secondary);font-size:13px;margin-top:4px;">✅ Включено — дублирует отчёты без фото в localStorage</p>
+          <button class="btn" id="settings-folder-btn" style="margin-top:12px;width:100%">📁 Выбрать папку для сохранения</button>
+          <p class="settings-desc" id="settings-folder-status" style="font-size:12px;margin-top:4px;"></p>
+        </div>
+        <div class="settings-group">
           <h3>Оформление</h3>
           <label class="settings-toggle">
             <input type="checkbox" id="settings-dark-theme">

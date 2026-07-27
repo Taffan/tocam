@@ -26,6 +26,7 @@
 
   const DB_NAME = 'PhotoReportsDB_v6';
   const STORE_NAME = 'reports';
+  const LS_PREFIX = '_rback_';
 
   let db = null;
   window.currentReport = null;
@@ -60,14 +61,29 @@
   let cachedZipBlob = null;
   let reportDiscarded = false;
 
+  async function restoreFolderHandle() {
+    if (!window.showDirectoryPicker) return;
+    try {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const req = tx.objectStore(STORE_NAME).get('__fsHandle__');
+      req.onsuccess = async () => {
+        if (req.result && req.result.handle) {
+          try { _fsDirHandle = req.result.handle; } catch(e) { _fsDirHandle = null; }
+        }
+      };
+    } catch(e) {}
+  }
+
   function init() {
     initDB().then(() => {
-      loadDrafts();
-      setupEventListeners();
-      setDefaultDate();
-      setupInstallPrompt();
-      checkForUpdates();
-      showPage('home');
+      restoreFolderHandle().then(() => {
+        loadDrafts();
+        setupEventListeners();
+        setDefaultDate();
+        setupInstallPrompt();
+        checkForUpdates();
+        showPage('home');
+      });
     }).catch(() => {
       db = createDummyDB();
       loadDrafts();
@@ -400,7 +416,15 @@
       deletePreviewPhoto(section);
     });
     document.getElementById('gallery-capture').addEventListener('click', () => {
-      document.getElementById('camera-input').click();
+      const pt = window.__galleryPhotoType;
+      if (pt?.isKE || pt?.isSN) {
+        const section = window.__gallerySection;
+        if (section && pt) {
+          const count = section.photos.filter(p => p.typeId === pt.id).length;
+          if (count >= (pt.maxPhotos || 1)) { showToast(`Максимум ${pt.maxPhotos} фото`); return; }
+        }
+        openKEModal();
+      } else document.getElementById('camera-input').click();
     });
 
     function closeGallery(e) {
@@ -460,6 +484,25 @@
       });
     }
 
+    const folderBtn = document.getElementById('settings-folder-btn');
+    const folderStatus = document.getElementById('settings-folder-status');
+    if (folderBtn && folderStatus) {
+      if (_fsDirHandle) folderStatus.textContent = '✅ Папка: ' + _fsDirHandle.name;
+      folderBtn.addEventListener('click', async () => {
+        if (!window.showDirectoryPicker) { showToast('Ваш браузер не поддерживает выбор папки'); return; }
+        try {
+          _fsDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+          try {
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            tx.objectStore(STORE_NAME).put({ id: '__fsHandle__', handle: _fsDirHandle });
+          } catch(e) {}
+          folderStatus.textContent = '✅ Папка выбрана: ' + _fsDirHandle.name;
+          showToast('Папка сохранена');
+          loadDrafts();
+        } catch(e) { if (e.name !== 'AbortError') showToast('Ошибка выбора папки'); }
+      });
+    }
+
     loadSettings();
   }
 
@@ -510,7 +553,14 @@
     const request = tx.objectStore(STORE_NAME).getAll();
 
     request.onsuccess = () => {
-      renderDrafts(request.result);
+      let drafts = request.result;
+      if (!drafts || drafts.length === 0) {
+        drafts = loadLSBackups();
+      }
+      if (!drafts || drafts.length === 0 && _fsDirHandle) {
+        loadReportsFromFolder().then(fd => { if (fd.length) renderDrafts(fd); });
+      }
+      renderDrafts(drafts);
     };
   }
 
@@ -568,7 +618,7 @@
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
     const request = store.delete(id);
-    request.onsuccess = () => loadDrafts();
+    request.onsuccess = () => { removeLSBackup(id); loadDrafts(); };
     request.onerror = () => loadDrafts();
   }
 
@@ -715,6 +765,74 @@
     if (!currentReport) return;
     currentReport.modified = new Date().toISOString();
     db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(currentReport);
+    backupReportToLS(currentReport);
+    saveToFolder(currentReport);
+  }
+
+  function stripReportPhotos(report) {
+    const r = JSON.parse(JSON.stringify(report));
+    if (r.sections) r.sections.forEach(sec => {
+      if (sec.photos) sec.photos.forEach(p => { p.dataUrl = ''; });
+    });
+    return r;
+  }
+
+  function backupReportToLS(report) {
+    try {
+      const key = LS_PREFIX + report.id;
+      const stripped = stripReportPhotos(report);
+      localStorage.setItem(key, JSON.stringify(stripped));
+      const idx = JSON.parse(localStorage.getItem(LS_PREFIX + 'index') || '[]');
+      if (!idx.includes(report.id)) { idx.push(report.id); localStorage.setItem(LS_PREFIX + 'index', JSON.stringify(idx)); }
+    } catch(e) {}
+  }
+
+  function removeLSBackup(id) {
+    try {
+      localStorage.removeItem(LS_PREFIX + id);
+      const idx = JSON.parse(localStorage.getItem(LS_PREFIX + 'index') || '[]');
+      const f = idx.filter(x => x !== id);
+      localStorage.setItem(LS_PREFIX + 'index', JSON.stringify(f));
+    } catch(e) {}
+  }
+
+  function loadLSBackups() {
+    try {
+      const idx = JSON.parse(localStorage.getItem(LS_PREFIX + 'index') || '[]');
+      return idx.map(id => {
+        try { const d = localStorage.getItem(LS_PREFIX + id); return d ? JSON.parse(d) : null; } catch(e) { return null; }
+      }).filter(Boolean);
+    } catch(e) { return []; }
+  }
+
+  let _fsDirHandle = null;
+
+  async function saveToFolder(report) {
+    if (!_fsDirHandle) return;
+    try {
+      const name = report.reportName + '_' + (report.date || 'nodate') + '_' + report.id.slice(-6) + '.json';
+      const fileHandle = await _fsDirHandle.getFileHandle(name.replace(/[<>:"/\\|?*]/g, '_'), { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(JSON.stringify(report, null, 2));
+      await writable.close();
+    } catch(e) { console.warn('Folder save failed', e); }
+  }
+
+  async function loadReportsFromFolder() {
+    if (!_fsDirHandle) return [];
+    try {
+      const reports = [];
+      for await (const entry of _fsDirHandle.values()) {
+        if (entry.kind !== 'file' || !entry.name.endsWith('.json')) continue;
+        try {
+          const file = await entry.getFile();
+          const text = await file.text();
+          const r = JSON.parse(text);
+          if (r && r.id) reports.push(r);
+        } catch(e) {}
+      }
+      return reports;
+    } catch(e) { return []; }
   }
 
   function showChecklist() {
@@ -827,10 +945,14 @@
       html += '<div class="ke-sn-container">';
 
       function renderKECell(pt) {
-        const hasPhoto = section.photos.some(p => p.typeId === pt.id);
-        const isSelected = selectedPhotoType === pt.id && !hasPhoto;
+        const photoCount = section.photos.filter(p => p.typeId === pt.id).length;
+        const maxPhotos = pt.maxPhotos || 1;
+        const hasPhoto = photoCount > 0;
+        const isComplete = photoCount >= maxPhotos;
+        const isSelected = selectedPhotoType === pt.id && !isComplete;
         const btnClass = 'ke-type' + (hasPhoto ? ' done' : '') + (isSelected ? ' selected' : '');
         const hint = pt.hint || '';
+        const countLabel = pt.multi ? `${photoCount}/${maxPhotos}` : (hasPhoto ? '✓' : '');
         return `<div class="photo-type-item ${btnClass}" data-type-id="${pt.id}">
             <div class="photo-type-check">${hasPhoto ?
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>' :
@@ -838,7 +960,7 @@
             <div class="photo-type-content">
               <div class="photo-type-name">${pt.name}</div>
             </div>
-            ${hasPhoto ? '<div class="photo-type-tap-hint">✓</div>' : ''}
+            ${countLabel ? `<div class="photo-type-tap-hint">${countLabel}</div>` : ''}
             ${hint ? `<button class="photo-type-hint-btn" data-hint="${hint.replace(/"/g, '&quot;')}" title="Подсказка">?</button>` : ''}
           </div>`;
       }
@@ -946,8 +1068,9 @@
         container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
         item.classList.add('selected');
         if (pt?.isKE || pt?.isSN) {
-          const photo = section.photos.find(p => p.typeId === typeId);
-          if (photo) openPhotoPreview(section, pt, photo);
+          const existing = section.photos.filter(p => p.typeId === typeId);
+          const max = pt.maxPhotos || 1;
+          if (existing.length >= max) openPhotoGallery(section, pt);
           else openKEModal();
         } else {
           const existing = section.photos.filter(p => p.typeId === typeId);
@@ -1222,6 +1345,7 @@
   function openPhotoGallery(section, pt) {
     currentGallerySection = section;
     window.__gallerySection = section;
+    window.__galleryPhotoType = pt;
     const titleEl = document.getElementById('gallery-title');
     if (titleEl) titleEl.textContent = pt?.name || '';
     renderGalleryGrid(section);
@@ -1652,9 +1776,11 @@
     const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
     
     const section = currentReport.sections[currentSectionIndex];
+    const sameType = section.photos.filter(p => p.typeId === selectedPhotoType);
     section.photos.push({
       id: generateId(),
       typeId: selectedPhotoType,
+      photoNumber: sameType.length + 1,
       dataUrl: dataUrl,
       timestamp: new Date().toISOString()
     });
@@ -1677,6 +1803,8 @@
     saveReport();
     renderSectionPhotos(section);
     renderPhotoTypes(section);
+    const galleryModal = document.getElementById('photo-gallery-modal');
+    if (galleryModal && !galleryModal.classList.contains('hidden')) renderGalleryGrid(section);
     closeKEModal();
   }
 
@@ -1947,6 +2075,7 @@
     if (currentReport && currentReport.id) {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       tx.objectStore(STORE_NAME).delete(currentReport.id);
+      removeLSBackup(currentReport.id);
     }
     cachedZipBlob = null;
     currentReport = null;
