@@ -7,7 +7,7 @@ const TYPE_CONFIGS = {
       { id: 'kassa', name: 'Кассовая зона', icon: 'kassa' },
       { id: 'td', name: 'ТД', icon: 'td' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
-      { id: 'uks', name: 'Универсальный кассовый стол (УКС)', icon: 'uks' },
+      { id: 'uks', name: 'УКС', icon: 'uks' },
       { id: 'mp', name: 'Мобильный принтер', icon: 'mp' },
       { id: 'stp', name: 'Термопринтер', icon: 'stp' }
     ],
@@ -22,7 +22,7 @@ const TYPE_CONFIGS = {
       { id: 'kso', name: 'КСО', icon: 'kso' },
       { id: 'td', name: 'ТД', icon: 'td' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
-      { id: 'uks', name: 'Универсальный кассовый стол (УКС)', icon: 'uks' },
+      { id: 'uks', name: 'УКС', icon: 'uks' },
       { id: 'vesi_napolnie', name: 'Весы', icon: 'vesi' },
       { id: 'mp', name: 'Мобильный принтер', icon: 'mp' },
       { id: 'stp', name: 'Термопринтер', icon: 'stp' }
@@ -53,7 +53,7 @@ const TYPE_CONFIGS = {
       { id: 'kassa_zona', name: 'Кассовая зона', icon: 'kassa' },
       { id: 'td', name: 'ТД', icon: 'td' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
-      { id: 'uks', name: 'Универсальный кассовый стол (УКС)', icon: 'uks' },
+      { id: 'uks', name: 'УКС', icon: 'uks' },
       { id: 'stp', name: 'Термопринтер', icon: 'stp' }
     ],
     hasProchee: true
