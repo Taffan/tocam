@@ -3,6 +3,27 @@
 
   let APP_VERSION = localStorage.getItem('appVersion') || '1.0.5.8';
 
+  if ('serviceWorker' in navigator || 'caches' in window) {
+    if (localStorage.getItem('sw_killed') !== '1') {
+      (async () => {
+        try {
+          if ('caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k => caches.delete(k)));
+          }
+          if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            for (const reg of regs) await reg.unregister();
+          }
+        } catch(e) {}
+        APP_VERSION = localStorage.getItem('appVersion') || APP_VERSION;
+        localStorage.setItem('sw_killed', '1');
+        location.reload();
+      })();
+      return;
+    }
+  }
+
   const verEl = document.getElementById('settings-version-number');
   if (verEl) verEl.textContent = APP_VERSION;
 
@@ -11,14 +32,30 @@
     .then(data => {
       const remoteVer = String(data.version || APP_VERSION);
       if (remoteVer !== APP_VERSION) {
-        APP_VERSION = remoteVer;
-        localStorage.setItem('appVersion', APP_VERSION);
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistration().then(reg => {
-            if (reg) reg.update();
-          }).catch(() => {});
+        if (localStorage.getItem('_updating') === '1') {
+          APP_VERSION = remoteVer;
+          localStorage.setItem('appVersion', APP_VERSION);
+          localStorage.removeItem('_updating');
+          return;
         }
+        localStorage.setItem('_updating', '1');
+        const tasks = [];
+        if ('caches' in window) {
+          tasks.push(caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))));
+        }
+        if ('serviceWorker' in navigator) {
+          tasks.push(navigator.serviceWorker.getRegistrations().then(regs => {
+            regs.forEach(reg => reg.unregister());
+          }));
+        }
+        Promise.all(tasks).finally(() => {
+          localStorage.setItem('appVersion', remoteVer);
+          localStorage.removeItem('_updating');
+          location.reload();
+        });
+        return;
       }
+      localStorage.removeItem('_updating');
       const verEl2 = document.getElementById('settings-version-number');
       if (verEl2) verEl2.textContent = APP_VERSION;
     })
@@ -990,7 +1027,7 @@
     const noVesi = section.noScales === true;
     const keTypes = section.photoTypes.filter(pt => pt.isKE && (!noVesi || pt.id !== 'ke_vesi'));
     const snTypes = section.photoTypes.filter(pt => pt.isSN && (!noVesi || pt.id !== 'sn_vesi'));
-    const regularTypes = section.photoTypes.filter(pt => !pt.isKE && !pt.isSN);
+    const regularTypes = section.photoTypes.filter(pt => !pt.isKE && !pt.isSN && (!noVesi || pt.id !== 'vesovaya_panel'));
 
     let html = '<div class="photo-types-group"><h4>Фото</h4>';
     regularTypes.forEach(pt => {
