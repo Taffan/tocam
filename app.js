@@ -54,8 +54,6 @@
   function clearLongPressTimer() {
     if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
   }
-  let _swReg = null;
-  let _updatePendingReload = false;
   let pageHistory = ['home'];
   let currentPage = 'home';
   let cachedZipBlob = null;
@@ -74,7 +72,14 @@
     } catch(e) {}
   }
 
+  function requestPersistentStorage() {
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().then(() => {}).catch(() => {});
+    }
+  }
+
   function init() {
+    requestPersistentStorage();
     initDB().then(() => {
       restoreFolderHandle().then(() => {
         loadDrafts();
@@ -190,7 +195,6 @@
   function checkForUpdates() {
     if ('serviceWorker' in navigator) {
       const doSWCheck = reg => {
-        _swReg = reg;
         reg.addEventListener('updatefound', () => {
           const sw = reg.installing || reg.waiting;
           if (!sw) return;
@@ -231,51 +235,17 @@
   function performUpdate() {
     document.getElementById('menu-dropdown').classList.add('hidden');
     showToast('Обновление...');
-    const doReload = (ver) => {
-      localStorage.setItem('appVersion', String(ver || 1));
-      location.reload();
-    };
-    if (_swReg && _swReg.waiting) {
-      _updatePendingReload = true;
-      _swReg.waiting.postMessage('SKIP_WAITING');
-      return;
+    localStorage.setItem('appVersion', String(Date.now()));
+    const promises = [];
+    if ('caches' in window) {
+      promises.push(caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))));
     }
-    fetch('version.json?t=' + Date.now(), { cache: 'no-cache' })
-      .then(r => r.json())
-      .then(d => {
-        _updatePendingReload = true;
-        const cleanup = () => {
-          if ('caches' in window) {
-            caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
-              doReload(d.version);
-            });
-          } else {
-            doReload(d.version);
-          }
-        };
-        cleanup();
-      })
-      .catch(() => showToast('Обновление недоступно без интернета'));
-  }
-
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('message', (event) => {
-      if (event.data === 'SW_UPDATED') {
-        showUpdateUI();
-      }
-    });
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!_updatePendingReload) return;
-      if ('caches' in window) {
-        caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
-          localStorage.setItem('appVersion', String(_updateBubble || 1));
-          location.reload();
-        });
-      } else {
-        localStorage.setItem('appVersion', String(_updateBubble || 1));
-        location.reload();
-      }
-    });
+    if ('serviceWorker' in navigator) {
+      promises.push(navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(reg => reg.unregister());
+      }));
+    }
+    Promise.all(promises).finally(() => location.reload());
   }
 
   function setupEventListeners() {
@@ -497,7 +467,16 @@
     const folderBtn = document.getElementById('settings-folder-btn');
     const folderStatus = document.getElementById('settings-folder-status');
     if (folderBtn && folderStatus) {
-      if (_fsDirHandle) folderStatus.textContent = '✅ Папка: ' + _fsDirHandle.name;
+      if (_fsDirHandle) { folderStatus.textContent = '✅ Папка: ' + _fsDirHandle.name; }
+      const updateFolderStatus = () => {
+        if (_fsDirHandle) { folderStatus.textContent = '✅ Папка: ' + _fsDirHandle.name; return; }
+        if (localStorage.getItem('_fsFolderName')) {
+          folderStatus.textContent = '⚠️ Папка была выбрана, но дескриптор утерян. Нажмите кнопку, чтобы выбрать снова.';
+        } else {
+          folderStatus.textContent = '';
+        }
+      };
+      updateFolderStatus();
       folderBtn.addEventListener('click', async () => {
         if (!window.showDirectoryPicker) { showToast('Ваш браузер не поддерживает выбор папки'); return; }
         try {
@@ -505,6 +484,7 @@
           try {
             const tx = db.transaction(STORE_NAME, 'readwrite');
             tx.objectStore(STORE_NAME).put({ id: '__fsHandle__', handle: _fsDirHandle });
+            localStorage.setItem('_fsFolderName', _fsDirHandle.name);
           } catch(e) {}
           folderStatus.textContent = '✅ Папка выбрана: ' + _fsDirHandle.name;
           showToast('Папка сохранена');
@@ -567,8 +547,12 @@
       if (!drafts || drafts.length === 0) {
         drafts = loadLSBackups();
       }
-      if (!drafts || drafts.length === 0 && _fsDirHandle) {
-        loadReportsFromFolder().then(fd => { if (fd.length) renderDrafts(fd); });
+      if (!drafts || drafts.length === 0) {
+        if (_fsDirHandle) {
+          loadReportsFromFolder().then(fd => { if (fd.length) renderDrafts(fd); });
+        } else if (localStorage.getItem('_fsFolderName') && !window.showDirectoryPicker) {
+          showToast('Папка с отчетами настроена, но недоступна в этом браузере');
+        }
       }
       renderDrafts(drafts);
     };
