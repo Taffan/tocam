@@ -354,6 +354,14 @@
       finishReport();
     });
     document.getElementById('btn-save-section').addEventListener('click', saveCurrentSection);
+    document.getElementById('kso-no-scales').addEventListener('change', function() {
+      const section = currentReport.sections[currentSectionIndex];
+      if (section) {
+        section.noScales = this.checked;
+        renderPhotoTypes(section);
+        saveReport();
+      }
+    });
 
     document.getElementById('camera-input').addEventListener('change', handleCameraCapture);
     document.getElementById('gallery-input').addEventListener('change', handleGallerySelect);
@@ -964,14 +972,24 @@
     document.getElementById('photos-section-title').textContent = section.name;
     document.getElementById('photos-section-subtitle').textContent = `Выберите тип и сделайте фото`;
 
+    const toggleArea = document.getElementById('kso-toggle-area');
+    if (section.type === 'kso') {
+      toggleArea.classList.remove('hidden');
+      const cb = document.getElementById('kso-no-scales');
+      cb.checked = section.noScales === true;
+    } else {
+      toggleArea.classList.add('hidden');
+    }
+
     renderPhotoTypes(section);
     renderSectionPhotos(section);
   }
 
   function renderPhotoTypes(section) {
     const container = document.getElementById('required-list');
-    const keTypes = section.photoTypes.filter(pt => pt.isKE);
-    const snTypes = section.photoTypes.filter(pt => pt.isSN);
+    const noVesi = section.noScales === true;
+    const keTypes = section.photoTypes.filter(pt => pt.isKE && (!noVesi || pt.id !== 'ke_vesi'));
+    const snTypes = section.photoTypes.filter(pt => pt.isSN && (!noVesi || pt.id !== 'sn_vesi'));
     const regularTypes = section.photoTypes.filter(pt => !pt.isKE && !pt.isSN);
 
     let html = '<div class="photo-types-group"><h4>Фото</h4>';

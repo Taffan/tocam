@@ -776,6 +776,33 @@ body {
   margin-bottom: 20px;
 }
 
+.kso-toggle-area {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+}
+
+.kso-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.kso-toggle-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.kso-toggle-text {
+  font-size: 14px;
+  color: var(--text);
+}
+
 .required-photos h3 {
   font-size: 14px;
   font-weight: 600;
