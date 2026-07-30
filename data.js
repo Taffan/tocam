@@ -201,7 +201,7 @@ const PHOTO_TYPES = {
       { id: 'markirovka_bp', name: 'Фото маркировки БП', filename: 'Фото маркировки БП', multi: true, hint: 'Четко видно маркировку всех блоков питания Видно, что блок розеток не висит на проводах, а прикреплен стяжками к ИБП или расположен на полке стола/стойки КСО.' },
       { id: 'markirovka_ibp_pk', name: 'Фото маркировки ИБП и ПК', filename: 'Фото маркировки ИБП и ПК', multi: true, hint: 'Видно отчетливо маркировку ИБП и ПК.' },
       { id: 'kassoviy_pk', name: 'Фото обслуженного Кассового ПК', filename: 'Фото обслуженного Кассового ПК', multi: true, hint: 'Видно, что внутри системного блока отсутствует грязь и пыль (в том числе на кулере, радиаторе, материнской плате и в нижней части системного блока). Если установлен неттоп (компактный мини-ПК) его не нужно вскрывать.' },
-      { id: 'klyuchi', name: 'Фото ключей', filename: 'Фото ключей', multi: true, hint: 'Видно бирку с названием магазина, ключ пристегнут.' }
+      { id: 'klyuchi', name: 'Фото ключей', filename: 'Фото ключей', multi: true, hint: 'Ключи РМК должны быть установлены в задние USB ПК.' }
     ],
     ke: [
       { id: 'ke_kkt', name: 'Фото КЕ ККТ', filename: 'Фото КЕ ККТ', hint: 'Текст на фотографиях маркировок, актов, чек листов, чеков ККМ, отметок планограмм должен быть читаемым; Изображение должно быть четким без размытия, блюра, расфокусировки; На фотографии наклейки КЕ должно быть видно наклейку и само оборудование, фотографии только с крупным планом наклейки приниматься не будут;' },
@@ -389,6 +389,7 @@ function generateSections(type, equipmentCounts) {
         if (type === 'mk' && eq.id === 'uks' && (pt.id === 'klyuch_egas' || pt.id === 'ke_skaner_a4' || pt.id === 'sn_skaner_a4')) return false;
         if ((type === 'mm_uks' || type === 'mm_rmd') && eq.id === 'kassa_zona' && (pt.id === 'ke_monitor' || pt.id === 'sn_monitor')) return false;
         if (type === 'gm' && eq.id === 'kassa_zona' && (pt.id === 'ke_monitor' || pt.id === 'sn_monitor')) return false;
+        if (type !== 'ma' && eq.id === 'kassa_zona' && pt.id === 'klyuchi') return false;
         return true;
       });
       const formattedTypes = photoTypes.map(pt => {

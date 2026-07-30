@@ -33,6 +33,7 @@ PWA for creating technical maintenance reports for Magnit retail stores.
 | KE (inventory numbers) — barcode scanner + preview | КЕ (инвентарные номера) — сканер ШК + превью |
 | SN (serial numbers) — barcode scanner + preview | СН (серийные номера) — сканер ШК + превью |
 | Interactive scanner: yellow boxes → select → green/red tracking | Интерактивный сканер: блоки → выбор → зелёная/красная рамка |
+| Edit equipment composition after report start | Изменение состава оборудования в начатом отчёте |
 | Photo quality settings (3 levels) | Настройка качества фото (3 уровня) |
 | Scanner quality settings (3 levels) | Настройка качества сканера (3 уровня) |
 | Dark theme | Тёмная тема |

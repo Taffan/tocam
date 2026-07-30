@@ -306,6 +306,12 @@
           history.pushState(null, '');
           return;
         }
+        const equipModal = document.getElementById('equipment-edit-modal');
+        if (equipModal && !equipModal.classList.contains('hidden')) {
+          closeEquipmentEditor();
+          history.pushState(null, '');
+          return;
+        }
         goBack();
       });
     }
@@ -441,6 +447,10 @@
 
     document.getElementById('gallery-ok').addEventListener('click', closeGallery);
     document.getElementById('gallery-close-btn').addEventListener('click', closeGallery);
+
+    document.getElementById('btn-edit-equipment').addEventListener('click', openEquipmentEditor);
+    document.getElementById('equipment-edit-cancel').addEventListener('click', closeEquipmentEditor);
+    document.getElementById('equipment-edit-save').addEventListener('click', saveEquipmentEdit);
 
     // Settings
     function loadSettings() {
@@ -895,6 +905,72 @@
         showPhotoSection();
       });
     });
+  }
+
+  function openEquipmentEditor() {
+    const config = TYPE_CONFIGS[currentReport.objectType];
+    if (!config) return;
+    const modal = document.getElementById('equipment-edit-modal');
+    const body = document.getElementById('equipment-edit-body');
+    body.innerHTML = config.equipment.map(eq => `
+      <div class="equipment-row">
+        <div class="equipment-icon">${EQUIPMENT_ICONS[eq.id] || ''}</div>
+        <div class="equipment-name">${eq.name}</div>
+        <div class="equipment-count">
+          <button type="button" class="count-btn" data-eq="${eq.id}" data-action="dec">-</button>
+          <input type="number" id="ee-${eq.id}" value="${currentReport.equipmentCounts[eq.id] || 0}" min="0" data-eq="${eq.id}">
+          <button type="button" class="count-btn" data-eq="${eq.id}" data-action="inc">+</button>
+        </div>
+      </div>
+    `).join('');
+    body.querySelectorAll('.count-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById(`ee-${btn.dataset.eq}`);
+        let val = parseInt(input.value) || 0;
+        val = btn.dataset.action === 'inc' ? val + 1 : Math.max(0, val - 1);
+        input.value = val;
+      });
+    });
+    modal.classList.remove('hidden');
+  }
+
+  function closeEquipmentEditor() {
+    document.getElementById('equipment-edit-modal').classList.add('hidden');
+  }
+
+  function saveEquipmentEdit() {
+    const config = TYPE_CONFIGS[currentReport.objectType];
+    if (!config) return;
+    const newCounts = {};
+    config.equipment.forEach(eq => {
+      const input = document.getElementById(`ee-${eq.id}`);
+      newCounts[eq.id] = input ? Math.max(0, parseInt(input.value) || 0) : 0;
+    });
+
+    for (const eq of config.equipment) {
+      const oldCount = currentReport.equipmentCounts[eq.id] || 0;
+      const newCount = newCounts[eq.id] || 0;
+      if (newCount >= oldCount) continue;
+      for (let n = newCount + 1; n <= oldCount; n++) {
+        const sec = currentReport.sections.find(s => s.id === `${eq.id}_${n}`);
+        if (sec && sec.photos.length > 0) {
+          showToast(`Секция «${sec.name}» — сначала удалите фото`);
+          return;
+        }
+      }
+    }
+
+    const newSections = generateSections(currentReport.objectType, newCounts);
+    for (const newSec of newSections) {
+      const oldSec = currentReport.sections.find(s => s.id === newSec.id);
+      if (oldSec) newSec.photos = oldSec.photos;
+    }
+    currentReport.sections = newSections;
+    currentReport.equipmentCounts = { ...newCounts };
+    saveReport();
+    closeEquipmentEditor();
+    showChecklist();
+    showToast('Состав оборудования обновлён');
   }
 
   function showPhotoSection() {
@@ -2141,24 +2217,20 @@
     zip.file('report.json', JSON.stringify(generateReportJSON(), null, 2));
 
     let photoCount = 0;
+    const photoTasks = [];
     for (const sec of currentReport.sections) {
       for (const photo of sec.photos) {
         const pt = sec.photoTypes.find(t => t.id === photo.typeId);
         if (!pt) continue;
         photoCount++;
         if (!photo.dataUrl) continue;
-        const base64 = photo.dataUrl.split(',')[1] || '';
         let filename = pt.filename;
         filename = filename.replace('.jpg', ` ${photo.photoNumber}.jpg`);
-        if (pt.isKE) {
-          zip.file(`КЕ/${filename}`, base64, { base64: true });
-        } else if (pt.isSN) {
-          zip.file(`Серийные номера/${filename}`, base64, { base64: true });
-        } else {
-          zip.file(filename, base64, { base64: true });
-        }
+        const path = pt.isKE ? `КЕ/${filename}` : pt.isSN ? `Серийные номера/${filename}` : filename;
+        photoTasks.push(fetch(photo.dataUrl).then(r => r.blob()).then(blob => zip.file(path, blob)));
       }
     }
+    await Promise.all(photoTasks);
 
     let keDone = 0, keTotal = 0, snDone = 0, snTotal = 0;
     for (const sec of currentReport.sections) {

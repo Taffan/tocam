@@ -194,6 +194,9 @@
       <div class="finish-status" id="finish-status"></div>
       
       <div class="checklist-actions">
+        <button class="btn btn-secondary btn-block" id="btn-edit-equipment" style="margin-bottom:8px">
+          Изменить состав оборудования
+        </button>
         <button class="btn btn-success btn-block" id="btn-finish-report">
           Завершить отчёт
         </button>
@@ -293,8 +296,9 @@
           <p>Внизу экрана отображаются все снимки. Нажмите на фото для просмотра. Кнопка <strong>«Удалить»</strong> удаляет снимок, кнопка <strong>«Ок»</strong> закрывает просмотр.</p>
         </div>
         <div class="help-section">
-          <h3>Завершение и отправка</h3>
-          <p>Когда все фото сделаны, нажмите <strong>«Далее»</strong> → проверьте чеклист → <strong>«Завершить отчёт»</strong>. На странице завершения нажмите <strong>«Отправить отчёт»</strong>. Приложение создаст ZIP-архив с фото, XLSX, JSON и Коды.txt, затем откроет меню отправки.</p>
+          <h3>Чек-лист и завершение</h3>
+          <p>На странице чек-листа отображаются все секции с прогрессом. Если нужно изменить количество оборудования — нажмите <strong>«Изменить состав оборудования»</strong>. При увеличении добавятся новые секции, при уменьшении удалятся только пустые.</p>
+          <p>Когда все фото сделаны, нажмите <strong>«Завершить отчёт»</strong>. На странице завершения нажмите <strong>«Отправить отчёт»</strong>. Приложение создаст ZIP-архив с фото, XLSX, JSON и Коды.txt, затем откроет меню отправки.</p>
         </div>
         <div class="help-section">
           <h3>Экспорт</h3>
@@ -443,6 +447,20 @@
       <div class="gallery-grid" id="gallery-grid"></div>
       <div class="gallery-footer">
         <button class="btn btn-secondary btn-block" id="gallery-ok">Готово</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EQUIPMENT EDIT MODAL -->
+  <div id="equipment-edit-modal" class="modal-overlay hidden">
+    <div class="equipment-edit-wrap">
+      <div class="equipment-edit-header">
+        <h2>Изменить состав оборудования</h2>
+      </div>
+      <div class="equipment-edit-body" id="equipment-edit-body"></div>
+      <div class="equipment-edit-footer">
+        <button class="btn" id="equipment-edit-cancel" style="flex:1">Отмена</button>
+        <button class="btn btn-primary" id="equipment-edit-save" style="flex:1">Сохранить</button>
       </div>
     </div>
   </div>
