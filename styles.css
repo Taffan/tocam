@@ -783,6 +783,10 @@ body {
   border-radius: var(--radius-sm);
 }
 
+.kso-toggle-area.hidden {
+  display: none;
+}
+
 .kso-toggle-label {
   display: flex;
   align-items: center;
