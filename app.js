@@ -1,7 +1,7 @@
 (function() {
   'use strict';
 
-  let APP_VERSION = localStorage.getItem('appVersion') || '1.0.5.8';
+  let APP_VERSION = localStorage.getItem('appVersion') || '1.0.6.0';
 
   if ('serviceWorker' in navigator || 'caches' in window) {
     if (localStorage.getItem('sw_killed') !== '1') {
@@ -77,6 +77,9 @@
   let scanCooldown = false;
   let scanTimer = null;
   let pendingScanCode = null;
+  let pendingServerName = null;
+  let pendingServerNameType = null;
+  let serverNamePromptResolve = null;
   let detectFailCount = 0;
   let torchOn = false;
   let deferredPrompt = null;
@@ -445,7 +448,7 @@
           if (count >= (pt.maxPhotos || 1)) { showToast(`Максимум ${pt.maxPhotos} фото`); return; }
         }
         openKEModal();
-      } else document.getElementById('camera-input').click();
+      } else openCameraForType(pt);
     });
 
     function closeGallery(e) {
@@ -466,6 +469,28 @@
     document.getElementById('btn-edit-equipment').addEventListener('click', openEquipmentEditor);
     document.getElementById('equipment-edit-cancel').addEventListener('click', closeEquipmentEditor);
     document.getElementById('equipment-edit-save').addEventListener('click', saveEquipmentEdit);
+
+    document.getElementById('server-name-ok').addEventListener('click', () => {
+      const value = document.getElementById('server-name-input').value.trim();
+      const resolve = serverNamePromptResolve;
+      serverNamePromptResolve = null;
+      closeServerNameModal();
+      if (resolve) resolve(value);
+    });
+    document.getElementById('server-name-cancel').addEventListener('click', () => {
+      const resolve = serverNamePromptResolve;
+      serverNamePromptResolve = null;
+      closeServerNameModal();
+      if (resolve) resolve('');
+    });
+    document.getElementById('server-name-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'server-name-modal') {
+        const resolve = serverNamePromptResolve;
+        serverNamePromptResolve = null;
+        closeServerNameModal();
+        if (resolve) resolve('');
+      }
+    });
 
     // Settings
     function loadSettings() {
@@ -543,6 +568,56 @@
 
   function openGallery() {
     document.getElementById('gallery-input').click();
+  }
+
+  function openServerNameModal() {
+    document.getElementById('server-name-input').value = '';
+    document.getElementById('server-name-modal').classList.remove('hidden');
+    setTimeout(() => {
+      const input = document.getElementById('server-name-input');
+      input.focus();
+      if (input.select) input.select();
+    }, 150);
+    return new Promise(resolve => { serverNamePromptResolve = resolve; });
+  }
+  function closeServerNameModal() {
+    document.getElementById('server-name-modal').classList.add('hidden');
+  }
+
+  function sanitizeFileNamePart(str) {
+    return String(str || '').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function openCameraForType(pt) {
+    pendingServerName = null;
+    pendingServerNameType = pt && pt.askName ? pt.id : null;
+    if (pendingServerNameType) {
+      openServerNameModal().then(name => {
+        pendingServerName = sanitizeFileNamePart(name);
+        document.getElementById('camera-input').click();
+      });
+      return;
+    }
+    document.getElementById('camera-input').click();
+  }
+
+  function openGalleryForType(pt) {
+    pendingServerName = null;
+    pendingServerNameType = pt && pt.askName ? pt.id : null;
+    if (pendingServerNameType) {
+      openServerNameModal().then(name => {
+        pendingServerName = sanitizeFileNamePart(name);
+        openGallery();
+      });
+      return;
+    }
+    openGallery();
+  }
+
+  function getPhotoFilename(pt, photo) {
+    let filename = pt.filename;
+    const label = photo.serverName ? ` (${photo.serverName})` : '';
+    return filename.replace('.jpg', `${label} ${photo.photoNumber}.jpg`);
   }
 
   function showPage(pageName) {
@@ -1145,7 +1220,8 @@
           longPressTimer = null;
           if (longPressActivated) {
             longPressActivated = false;
-            openGallery();
+            const pt = section.photoTypes.find(t => t.id === longPressTypeId);
+            openGalleryForType(pt);
           }
         });
         item.addEventListener('touchend', () => {
@@ -1153,7 +1229,8 @@
           longPressTimer = null;
           if (longPressActivated) {
             longPressActivated = false;
-            document.getElementById('gallery-input').click();
+            const pt = section.photoTypes.find(t => t.id === longPressTypeId);
+            openGalleryForType(pt);
           }
         });
 
@@ -1176,7 +1253,7 @@
             selectedPhotoType = typeId;
             container.querySelectorAll('.photo-type-item').forEach(i => i.classList.remove('selected'));
             item.classList.add('selected');
-            openGallery();
+            openGalleryForType(pt);
             return;
           }
           selectedPhotoType = typeId;
@@ -1190,7 +1267,7 @@
         } else {
           const existing = section.photos.filter(p => p.typeId === typeId);
           if (existing.length > 0) openPhotoGallery(section, pt);
-          else document.getElementById('camera-input').click();
+          else openCameraForType(pt);
         }
       });
     });
@@ -1226,6 +1303,7 @@
     let html = section.photos.map((p, i) => {
       const pt = section.photoTypes.find(t => t.id === p.typeId);
       let typeName = pt?.name || 'Фото';
+      if (p.serverName) typeName += ` — ${p.serverName}`;
       if (pt?.multi && p.photoNumber > 1) {
         typeName += ` (${p.photoNumber})`;
       }
@@ -1251,7 +1329,7 @@
         showToast(`Максимум ${maxPhotos} фото`);
         return;
       }
-      document.getElementById('camera-input').click();
+      openCameraForType(pt);
     });
 
     container.querySelectorAll('.photo-item-delete').forEach(btn => {
@@ -1278,12 +1356,22 @@
 
   function handleCameraCapture(e) {
     const file = e.target.files[0];
-    if (file) processImage(file);
+    if (file) {
+      const name = (pendingServerName && pendingServerNameType === selectedPhotoType) ? pendingServerName : null;
+      processImage(file, name);
+    } else {
+      pendingServerName = null;
+      pendingServerNameType = null;
+    }
     e.target.value = '';
   }
 
   function handleGallerySelect(e) {
-    Array.from(e.target.files).forEach(file => processImage(file));
+    const files = Array.from(e.target.files);
+    const name = (pendingServerName && pendingServerNameType === selectedPhotoType) ? pendingServerName : null;
+    files.forEach(file => processImage(file, name));
+    pendingServerName = null;
+    pendingServerNameType = null;
     e.target.value = '';
   }
 
@@ -1337,7 +1425,7 @@
     });
   }
 
-  function processImage(file) {
+  function processImage(file, appliedServerName) {
     getEXIFOrientation(file).then(orientation => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -1386,13 +1474,16 @@
 
         const section = currentReport.sections[currentSectionIndex];
         const photoNumber = section.photos.filter(p => p.typeId === selectedPhotoType).length + 1;
-        
+
+        const finalServerName = (appliedServerName && pendingServerNameType === selectedPhotoType) ? appliedServerName : null;
+
         section.photos.push({
           id: generateId(),
           typeId: selectedPhotoType,
           photoNumber: photoNumber,
           dataUrl: canvas.toDataURL('image/jpeg', 0.85),
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          serverName: finalServerName
         });
 
         const galleryModal = document.getElementById('photo-gallery-modal');
@@ -2129,8 +2220,7 @@
         if (!pt) continue;
 
         itemNum++;
-        let filename = pt.filename;
-        filename = filename.replace('.jpg', ` ${photo.photoNumber}.jpg`);
+        let filename = getPhotoFilename(pt, photo);
 
         ws_data.push([
           String(itemNum),
@@ -2215,8 +2305,7 @@
       sec.photos.forEach(photo => {
         const pt = sec.photoTypes.find(t => t.id === photo.typeId);
         if (pt) {
-          let filename = pt.filename;
-          filename = filename.replace('.jpg', ` ${photo.photoNumber}.jpg`);
+          let filename = getPhotoFilename(pt, photo);
           photos.push({
             section: sec.name,
             filename: filename,
@@ -2263,8 +2352,7 @@
         if (!pt) continue;
         photoCount++;
         if (!photo.dataUrl) continue;
-        let filename = pt.filename;
-        filename = filename.replace('.jpg', ` ${photo.photoNumber}.jpg`);
+        let filename = getPhotoFilename(pt, photo);
         const path = pt.isKE ? `КЕ/${filename}` : pt.isSN ? `Серийные номера/${filename}` : filename;
         photoTasks.push(fetch(photo.dataUrl).then(r => r.blob()).then(blob => zip.file(path, blob)));
       }

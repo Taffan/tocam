@@ -472,6 +472,23 @@
     </div>
   </div>
 
+  <!-- SERVER NAME MODAL -->
+  <div id="server-name-modal" class="modal-overlay hidden">
+    <div class="equipment-edit-wrap">
+      <div class="equipment-edit-header">
+        <h2>Название сервера</h2>
+      </div>
+      <div class="equipment-edit-body">
+        <p style="margin:0 0 10px;font-size:13px;color:#555">Введите название сервера. Оно будет добавлено в имя файла фотографий.</p>
+        <input type="text" id="server-name-input" placeholder="sXXXXXXserv01 (XXXXXX-код ГМ)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:15px;box-sizing:border-box">
+      </div>
+      <div class="equipment-edit-footer">
+        <button class="btn" id="server-name-cancel" style="flex:1">Без названия</button>
+        <button class="btn btn-primary" id="server-name-ok" style="flex:1">Готово</button>
+      </div>
+    </div>
+  </div>
+
   <script src="lib/jszip.min.js"></script>
   <script src="lib/zxing.min.js"></script>
   <script src="lib/xlsx.min.js"></script>
