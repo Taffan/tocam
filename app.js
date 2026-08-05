@@ -120,6 +120,7 @@
 
   function init() {
     requestPersistentStorage();
+    detectAutoOrient();
     initDB().then(() => {
       restoreFolderHandle().then(() => {
         loadDrafts();
@@ -618,6 +619,65 @@
     let filename = pt.filename;
     const label = photo.serverName ? ` (${photo.serverName})` : '';
     return filename.replace('.jpg', `${label} ${photo.photoNumber}.jpg`);
+  }
+
+  // 32x16 landscape JPEG, left half white / right half black, EXIF orientation = 6
+  const ORIENT6_TEST_B64 = '/9j/4AAQSkZJRgABAQAAAQABAAD/4QAiRXhpZgAASUkqAAgAAAABABIBAwABAAAABgAAAAAAAAD/2wBDAAIBAQEBAQIBAQECAgICAgQDAgICAgUEBAMEBgUGBgYFBgYGBwkIBgcJBwYGCAsICQoKCgoKBggLDAsKDAkKCgr/wAALCAAQACABAREA/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/9oACAEBAAA/AP38or+AOiv7/KK/gDor/9k=';
+
+  let autoOrientDetected = null;
+  let autoOrientPromise = null;
+
+  // Detects whether the browser auto-applies EXIF orientation when drawing to canvas.
+  function detectAutoOrient() {
+    if (autoOrientPromise) return autoOrientPromise;
+    autoOrientPromise = new Promise(resolve => {
+      try {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const w = img.naturalWidth, h = img.naturalHeight;
+            const c = document.createElement('canvas');
+            c.width = w; c.height = h;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            const lum = (x, y) => {
+              const d = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
+              return 0.299 * d[0] + 0.587 * d[1] + 0.114 * d[2];
+            };
+            // Raw source is landscape 32x16 with white LEFT half.
+            // Auto-orienting browsers swap dims to 16x32 and put white at TOP.
+            // Sample well away from the white/black boundary (avoids DCT ringing).
+            const topLum = lum(w * 0.75, h * 0.25);
+            const leftLum = lum(w * 0.25, h * 0.5);
+            autoOrientDetected = topLum > leftLum;
+          } catch(e) { autoOrientDetected = false; }
+          resolve(autoOrientDetected);
+        };
+        img.onerror = () => { autoOrientDetected = false; resolve(false); };
+        img.src = 'data:image/jpeg;base64,' + ORIENT6_TEST_B64;
+      } catch(e) { autoOrientDetected = false; resolve(false); }
+    });
+    return autoOrientPromise;
+  }
+
+  function rotateForOrientation(src, orientation, w, h) {
+    const swap = orientation >= 5;
+    const cw = swap ? h : w;
+    const ch = swap ? w : h;
+    const c = document.createElement('canvas');
+    c.width = cw; c.height = ch;
+    const ctx = c.getContext('2d');
+    switch (orientation) {
+      case 2: ctx.transform(-1, 0, 0, 1, cw, 0); break;
+      case 3: ctx.transform(-1, 0, 0, -1, cw, ch); break;
+      case 4: ctx.transform(1, 0, 0, -1, 0, ch); break;
+      case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
+      case 6: ctx.transform(0, 1, -1, 0, ch, 0); break;
+      case 7: ctx.transform(0, -1, -1, 0, ch, cw); break;
+      case 8: ctx.transform(0, -1, 1, 0, 0, cw); break;
+    }
+    ctx.drawImage(src, 0, 0, w, h);
+    return c;
   }
 
   function showPage(pageName) {
@@ -1425,8 +1485,9 @@
     });
   }
 
-  function processImage(file, appliedServerName) {
-    getEXIFOrientation(file).then(orientation => {
+  async function processImage(file, appliedServerName) {
+    await detectAutoOrient();
+    return getEXIFOrientation(file).then(orientation => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
@@ -1454,20 +1515,9 @@
             return c;
           }
           let canvas;
-          if (orientation > 1) {
-            const tmp = document.createElement('canvas');
-            tmp.width = srcW; tmp.height = srcH;
-            const tctx = tmp.getContext('2d');
-            tctx.translate(srcW / 2, srcH / 2);
-            if (orientation === 2) tctx.scale(-1, 1);
-            else if (orientation === 3) tctx.rotate(Math.PI);
-            else if (orientation === 4) tctx.scale(1, -1);
-            else if (orientation === 5) { tctx.scale(-1, 1); tctx.rotate(Math.PI / 2); }
-            else if (orientation === 6) tctx.rotate(Math.PI / 2);
-            else if (orientation === 7) { tctx.scale(-1, 1); tctx.rotate(-Math.PI / 2); }
-            else if (orientation === 8) tctx.rotate(-Math.PI / 2);
-            tctx.drawImage(src, -srcW / 2, -srcH / 2, srcW, srcH);
-            canvas = resizeToMax(tmp, tmp.width, tmp.height);
+          if (orientation > 1 && !autoOrientDetected) {
+            const rotated = rotateForOrientation(src, orientation, srcW, srcH);
+            canvas = resizeToMax(rotated, rotated.width, rotated.height);
           } else {
             canvas = resizeToMax(src, srcW, srcH);
           }
