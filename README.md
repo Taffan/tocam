@@ -162,6 +162,7 @@ Serial numbers:
 
 - **Photo quality:** Economy (1024px), Medium (1920px), High (3264px) — always resized to 1280px max
 - **Scanner quality:** Low (640×480), Medium (1280×720), High (1920×1080), iOS (720p/ZXing, default on iPhone/iPad)
+- **Battery saver:** toggle in Settings — disables continuous barcode auto-scan (KE/SN), code is recognized from the captured photo; camera only active during capture | **Экономия батареи:** переключатель в настройках — отключает постоянный автоскан КЕ/СН, код распознаётся из фото, камера работает только при съёмке
 - **Dark theme:** toggle switch, saved to localStorage
 
 ## Help / Справка

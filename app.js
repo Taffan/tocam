@@ -76,6 +76,7 @@
   let autoSaveTimer = null;
   let scanCooldown = false;
   let scanTimer = null;
+  let keModalOpen = false;
   let pendingScanCode = null;
   let pendingServerName = null;
   let pendingServerNameType = null;
@@ -434,6 +435,14 @@
     });
     document.getElementById('ke-cam-video').addEventListener('click', () => { if (pendingScanCode) keCamCapture(); });
 
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        if (keModalOpen) suspendScanner();
+      } else {
+        if (keModalOpen) resumeScanner();
+      }
+    });
+
     document.getElementById('preview-ok').addEventListener('click', closePreview);
     document.getElementById('preview-back').addEventListener('click', closePreview);
     document.getElementById('preview-delete').addEventListener('click', () => {
@@ -499,6 +508,7 @@
       const scannerQuality = localStorage.getItem('scannerQuality') || (/iPad|iPhone|iPod/.test(navigator.userAgent) ? 'ios' : 'medium');
       const darkTheme = localStorage.getItem('darkTheme') === 'true';
       const savedTechnician = localStorage.getItem('technician') || '';
+      const batterySaver = localStorage.getItem('batterySaver') === 'true';
 
       document.querySelectorAll('input[name="photoQuality"]').forEach(r => {
         r.checked = r.value === photoQuality;
@@ -507,6 +517,8 @@
         r.checked = r.value === scannerQuality;
       });
       document.getElementById('settings-dark-theme').checked = darkTheme;
+      const batterySaverEl = document.getElementById('settings-battery-saver');
+      if (batterySaverEl) batterySaverEl.checked = batterySaver;
       const techInput = document.getElementById('settings-technician');
       if (techInput) techInput.value = savedTechnician;
 
@@ -527,6 +539,14 @@
       saveSetting('darkTheme', e.target.checked);
       document.documentElement.classList.toggle('dark', e.target.checked);
     });
+
+    const batterySaverEl = document.getElementById('settings-battery-saver');
+    if (batterySaverEl) {
+      batterySaverEl.addEventListener('change', (e) => {
+        saveSetting('batterySaver', e.target.checked);
+        if (keModalOpen) resumeScanner();
+      });
+    }
 
     const settingsTechInput = document.getElementById('settings-technician');
     if (settingsTechInput) {
@@ -1436,10 +1456,11 @@
   }
 
   function getScannerRes() {
+    if (localStorage.getItem('batterySaver') === 'true') return { width: { ideal: 640 }, height: { ideal: 480 } };
     const q = localStorage.getItem('scannerQuality') || (/iPad|iPhone|iPod/.test(navigator.userAgent) ? 'ios' : 'medium');
     if (q === 'low') return { width: { ideal: 640 }, height: { ideal: 480 } };
     if (q === 'high') return { width: { ideal: 1920 }, height: { ideal: 1080 } };
-    if (q === 'ios') return { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
+    if (q === 'ios') return { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } };
     return { width: { ideal: 1280 }, height: { ideal: 720 } };
   }
 
@@ -1689,6 +1710,7 @@
     pendingScanCode = null;
     window._zxingDetectedCodes = null;
     cachedOverlayCodes = '';
+    keModalOpen = true;
     modal.classList.remove('hidden');
     if (overlays) overlays.innerHTML = '';
     if (confirmBar) confirmBar.classList.add('hidden');
@@ -1705,7 +1727,12 @@
       try { await video.play(); } catch(e) {}
       scanCooldown = false;
 
-      if (localStorage.getItem('scannerQuality') === 'ios') {
+      if (localStorage.getItem('batterySaver') === 'true') {
+        if (status) {
+          status.textContent = 'Экономия батареи: наведите на ШК и нажмите «Сделать фото». Код распознается из фото.';
+          status.className = 'ke-cam-status';
+        }
+      } else if (localStorage.getItem('scannerQuality') === 'ios') {
         if (typeof ZXing !== 'undefined') {
           (function waitReady(n) { if (modal.classList.contains('hidden')) return; if (video.readyState >= 2 && video.videoWidth > 0) initZXingScannerInterval(video); else if (n < 50) setTimeout(waitReady, 100, n + 1); else initZXingScannerInterval(video); })(0);
         } else showToast('Сканер не поддерживается — используйте фото');
@@ -2020,6 +2047,37 @@
     if (window._zxingOverlayTimer) { clearInterval(window._zxingOverlayTimer); window._zxingOverlayTimer = null; }
     if (window._zxingScanTimer) { clearInterval(window._zxingScanTimer); window._zxingScanTimer = null; }
     window._zxingDetectedCodes = null;
+    keModalOpen = false;
+  }
+
+  // Battery: stop camera + decoding when the app is backgrounded (screen lock / app switch)
+  function suspendScanner() {
+    if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+    if (window._zxingScanTimer) { clearInterval(window._zxingScanTimer); window._zxingScanTimer = null; }
+    if (window._zxingOverlayTimer) { clearInterval(window._zxingOverlayTimer); window._zxingOverlayTimer = null; }
+    if (window._zxingBrowserReader) { window._zxingBrowserReader.reset(); window._zxingBrowserReader = null; }
+    window._zxingDetectedCodes = null;
+    if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
+    const video = document.getElementById('ke-cam-video');
+    if (video && video.srcObject) { video.srcObject = null; }
+  }
+
+  function resumeScanner() {
+    if (!keModalOpen) return;
+    const savedCode = pendingScanCode;
+    const savedCooldown = scanCooldown;
+    openKEModal();
+    if (savedCode && !pendingScanCode) {
+      pendingScanCode = savedCode;
+      scanCooldown = savedCooldown;
+      const confirmBar = document.getElementById('ke-cam-confirm');
+      const confirmText = document.getElementById('ke-cam-confirm-text');
+      if (confirmBar && confirmText) {
+        confirmBar.dataset.code = savedCode;
+        confirmText.textContent = savedCode;
+        confirmBar.classList.remove('hidden');
+      }
+    }
   }
 
   function keCamCapture() {
