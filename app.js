@@ -121,6 +121,7 @@
 
   function init() {
     requestPersistentStorage();
+    initViewportSync();
     detectAutoOrient();
     initDB().then(() => {
       restoreFolderHandle().then(() => {
@@ -591,10 +592,30 @@
     document.getElementById('gallery-input').click();
   }
 
+  function syncVisualViewport() {
+    try {
+      const vv = window.visualViewport;
+      if (vv) {
+        document.documentElement.style.setProperty('--vvt', Math.round(vv.offsetTop) + 'px');
+        document.documentElement.style.setProperty('--vvh', Math.round(vv.height) + 'px');
+      }
+    } catch(e) {}
+  }
+  function initViewportSync() {
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', syncVisualViewport);
+      window.visualViewport.addEventListener('scroll', syncVisualViewport);
+    }
+    window.addEventListener('resize', syncVisualViewport);
+    window.addEventListener('orientationchange', () => setTimeout(syncVisualViewport, 200));
+    syncVisualViewport();
+  }
+
   function openServerNameModal() {
     document.getElementById('server-name-input').value = '';
     document.getElementById('server-name-modal').classList.remove('hidden');
     setTimeout(() => {
+      syncVisualViewport();
       const input = document.getElementById('server-name-input');
       input.focus();
       if (input.select) input.select();
@@ -603,6 +624,7 @@
   }
   function closeServerNameModal() {
     document.getElementById('server-name-modal').classList.add('hidden');
+    syncVisualViewport();
   }
 
   function sanitizeFileNamePart(str) {

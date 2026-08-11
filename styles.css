@@ -2183,7 +2183,10 @@ body {
 /* Photo Preview Modal */
 .modal-overlay {
   position: fixed;
-  inset: 0;
+  left: 0;
+  top: var(--vvt, 0);
+  right: 0;
+  height: var(--vvh, 100vh);
   z-index: 1000;
   background: #000;
   display: flex;
