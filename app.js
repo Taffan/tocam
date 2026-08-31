@@ -1,7 +1,7 @@
 (function() {
   'use strict';
 
-  let APP_VERSION = localStorage.getItem('appVersion') || '1.0.6.0';
+  let APP_VERSION = localStorage.getItem('appVersion') || '1.0.7.0';
 
   if ('serviceWorker' in navigator || 'caches' in window) {
     if (localStorage.getItem('sw_killed') !== '1') {
@@ -660,7 +660,9 @@
   function getPhotoFilename(pt, photo) {
     let filename = pt.filename;
     const label = photo.serverName ? ` (${photo.serverName})` : '';
-    return filename.replace('.jpg', `${label} ${photo.photoNumber}.jpg`);
+    const isKESN = pt.isKE || pt.isSN;
+    const num = isKESN && photo.photoNumber <= 1 ? '' : ` ${photo.photoNumber}`;
+    return filename.replace('.jpg', `${label}${num}.jpg`);
   }
 
   // 32x16 landscape JPEG, left half white / right half black, EXIF orientation = 6
@@ -2242,7 +2244,23 @@
     }
   }
 
+  function getReportPhotoProgress() {
+    let done = 0, total = 0;
+    currentReport.sections.forEach(sec => {
+      sec.photoTypes.forEach(pt => {
+        if (pt.isKE || pt.isSN) return;
+        total++;
+        if (sec.photos.some(p => p.typeId === pt.id)) done++;
+      });
+    });
+    return { done, total };
+  }
+
   function finishReport() {
+    const { done, total } = getReportPhotoProgress();
+    if (done < total) {
+      if (!confirm(`Не все фото сделаны: ${done} из ${total}.\nВсё равно завершить отчёт?`)) return;
+    }
     currentReport.status = 'completed';
     currentReport.completedAt = new Date().toISOString();
     saveReport();
@@ -2252,31 +2270,47 @@
   function showComplete() {
     showPage('complete');
     let totalPhotos = 0;
-    let doneTypes = 0;
-    let totalTypes = 0;
     currentReport.sections.forEach(sec => {
       totalPhotos += sec.photos.length;
-      sec.photoTypes.forEach(pt => {
-        if (pt.isKE || pt.isSN) return;
-        totalTypes++;
-        if (sec.photos.some(p => p.typeId === pt.id)) doneTypes++;
-      });
     });
+    const { done, total } = getReportPhotoProgress();
+
+    const warnEl = document.getElementById('complete-warning');
+    if (done < total) {
+      warnEl.classList.remove('hidden');
+      warnEl.innerHTML = `⚠️ Не все фото сделаны: сделано <strong>${done} из ${total}</strong>`;
+    } else {
+      warnEl.classList.add('hidden');
+    }
 
     document.getElementById('complete-stats').innerHTML = `
       <div class="stat"><div class="stat-value">${currentReport.sections.length}</div><div class="stat-label">Секций</div></div>
-      <div class="stat"><div class="stat-value">${totalPhotos}</div><div class="stat-label">Фото</div></div>
-      <div class="stat"><div class="stat-value">${Math.round((doneTypes/totalTypes)*100)}%</div><div class="stat-label">Готово</div></div>
+      <div class="stat"><div class="stat-value">${totalPhotos}</div><div class="stat-label">Фото сделано</div></div>
+      <div class="stat"><div class="stat-value">${total > 0 ? Math.round((done/total)*100) : 0}%</div><div class="stat-label">Готово</div></div>
     `;
 
     preBuildArchive();
   }
 
   function getXlsxFilename() {
-    const fmt = currentReport.objectType.toUpperCase();
+    const type = currentReport.objectType;
+    const fmt = getReportTypeLabel(type);
+    const suffix = type === 'mm_uks' ? ' (УКС)' : type === 'mm_rmd' ? ' (РМД)' : '';
     const obj = currentReport.reportName || '';
-    const tech = currentReport.technician || '';
-    return `${fmt} ${obj} ЧЛ ТО ${fmt} (${tech}).xlsx`;
+    return `${fmt} ${obj} ЧЛ ТО ${fmt}${suffix} .xlsx`;
+  }
+
+  function getReportTypeLabel(type) {
+    const conf = TYPE_CONFIGS[type];
+    return conf ? conf.name : (type || '').toUpperCase();
+  }
+
+  function getArchiveFilename() {
+    const type = currentReport.objectType;
+    const fmt = getReportTypeLabel(type);
+    const suffix = type === 'mm_uks' ? ' (УКС)' : type === 'mm_rmd' ? ' (РМД)' : '';
+    const obj = currentReport.reportName || 'Отчёт';
+    return `${fmt} ${obj} ЧЛ ТО ${fmt}${suffix}.zip`;
   }
 
   function generateXlsxData() {
@@ -2292,7 +2326,7 @@
     const eqMap = {
       'kassa': 'Касса',
       'kassa_zona': 'Кассовая зона',
-      'kso': 'КСО',
+      'kso': 'Касса самообслуживания',
       'td': 'ТД',
       'tsd': 'ТСД',
       'uks': 'УКС',
@@ -2335,7 +2369,8 @@
     for (const sec of sections) {
       if (!sec.photos || sec.photos.length === 0) continue;
 
-      ws_data.push([sec.name || '']);
+      const blockName = sec.archiveName || sec.name || '';
+      ws_data.push([blockName]);
 
       const sortedPhotos = [...sec.photos].sort((a, b) => {
         const typeA = sec.photoTypes.find(t => t.id === a.typeId);
@@ -2354,7 +2389,7 @@
 
         ws_data.push([
           String(itemNum),
-          sec.name || '',
+          blockName,
           filename.replace('.jpg', ''),
           'OK',
           'нет замечаний'
@@ -2396,7 +2431,7 @@
       return;
     }
     const reportName = currentReport.reportName || 'Отчёт';
-    const filename = `${(currentReport.objectType || '').toUpperCase()}_${reportName}_${(currentReport.date || '').replace(/-/g, '.')}.zip`;
+    const filename = getArchiveFilename();
     const file = new File([cachedZipBlob], filename, { type: 'application/zip' });
     navigator.share({ title: `Фотоотчёт: ${reportName}`, text: `Фотоотчёт: ${reportName}`, files: [file] }).catch(err => {
       if (err && err.name === 'AbortError') return;
@@ -2437,7 +2472,7 @@
         if (pt) {
           let filename = getPhotoFilename(pt, photo);
           photos.push({
-            section: sec.name,
+            section: sec.archiveName || sec.name,
             filename: filename,
             type: pt.isKE ? 'КЕ' : 'фото',
             timestamp: photo.timestamp

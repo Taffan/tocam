@@ -7,7 +7,7 @@ const TYPE_CONFIGS = {
       { id: 'kassa', name: 'Кассовая зона', icon: 'kassa' },
       { id: 'td', name: 'ТД', icon: 'td' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
-      { id: 'uks', name: 'УКС', icon: 'uks' },
+      { id: 'uks', name: 'УКС', archiveName: 'Универсальный кассовый стол (УКС)', icon: 'uks' },
       { id: 'mp', name: 'Мобильный принтер', icon: 'mp' },
       { id: 'stp', name: 'Термопринтер', icon: 'stp' }
     ],
@@ -19,10 +19,10 @@ const TYPE_CONFIGS = {
     separator: ' # ',
     equipment: [
       { id: 'kassa_zona', name: 'Кассовая зона', icon: 'kassa' },
-      { id: 'kso', name: 'КСО', icon: 'kso' },
+      { id: 'kso', name: 'КСО', archiveName: 'Касса самообслуживания', icon: 'kso' },
       { id: 'td', name: 'ТД', icon: 'td' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
-      { id: 'uks', name: 'УКС', icon: 'uks' },
+      { id: 'uks', name: 'УКС', archiveName: 'Универсальный кассовый стол (УКС)', icon: 'uks' },
       { id: 'vesi_napolnie', name: 'Весы', icon: 'vesi' },
       { id: 'mp', name: 'Мобильный принтер', icon: 'mp' },
       { id: 'stp', name: 'Термопринтер', icon: 'stp' }
@@ -35,7 +35,7 @@ const TYPE_CONFIGS = {
     separator: ' # ',
     equipment: [
       { id: 'kassa_zona', name: 'Кассовая зона', icon: 'kassa' },
-      { id: 'kso', name: 'КСО', icon: 'kso' },
+      { id: 'kso', name: 'КСО', archiveName: 'Касса самообслуживания', icon: 'kso' },
       { id: 'td', name: 'ТД', icon: 'td' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
       { id: 'rmd', name: 'Рабочее место директора (РМД)', icon: 'rmd' },
@@ -53,7 +53,7 @@ const TYPE_CONFIGS = {
       { id: 'kassa_zona', name: 'Кассовая зона', icon: 'kassa' },
       { id: 'td', name: 'ТД', icon: 'td' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
-      { id: 'uks', name: 'УКС', icon: 'uks' },
+      { id: 'uks', name: 'УКС', archiveName: 'Универсальный кассовый стол (УКС)', icon: 'uks' },
       { id: 'stp', name: 'Термопринтер', icon: 'stp' }
     ],
     hasProchee: true
@@ -65,7 +65,7 @@ const TYPE_CONFIGS = {
     equipment: [
       { id: 'server', name: 'Серверная', icon: 'server' },
       { id: 'kassa_zona', name: 'Кассовая зона', icon: 'kassa' },
-      { id: 'kso', name: 'КСО', icon: 'kso' },
+      { id: 'kso', name: 'КСО', archiveName: 'Касса самообслуживания', icon: 'kso' },
       { id: 'tsd', name: 'ТСД', icon: 'tsd' },
       { id: 'vesi_napolnie', name: 'Весы напольные', icon: 'vesi' },
       { id: 'vesi_samoobsl', name: 'Весы самообслуживания', icon: 'vesi' },
@@ -152,7 +152,7 @@ const PHOTO_TYPES = {
       { id: 'ke_ibp_server', name: 'Фото КЕ ИБП Сервер', filename: 'Фото КЕ ИБП Сервер', hint: 'Текст маркировок, чеков ККМ, отметок планограмм должен быть читаемым; Изображение должно быть четким; На фотографиях КЕ четко видно наклейку и оборудование, фотографии только с крупным планом приниматься не будут.' },
       { id: 'ke_pkd', name: 'Фото КЕ ПКД', filename: 'Фото КЕ ПКД', hint: 'Текст маркировок, чеков ККМ, отметок планограмм должен быть читаемым; Изображение должно быть четким; На фотографиях КЕ четко видно наклейку и оборудование, фотографии только с крупным планом приниматься не будут.' },
       { id: 'ke_ibp_pkd', name: 'Фото КЕ ИБП ПКД', filename: 'Фото КЕ ИБП ПКД', hint: 'Текст маркировок, чеков ККМ, отметок планограмм должен быть читаемым; Изображение должно быть четким; На фотографиях КЕ четко видно наклейку и оборудование, фотографии только с крупным планом приниматься не будут.' },
-      { id: 'ke_monitor', name: 'Фото КЕ Мониторы', filename: 'Фото КЕ Мониторы', hint: 'Текст маркировок, чеков ККМ, отметок планограмм должен быть читаемым; Изображение должно быть четким; На фотографиях КЕ четко видно наклейку и оборудование, фотографии только с крупным планом приниматься не будут.' },
+      { id: 'ke_monitor', name: 'Фото КЕ Монитор', filename: 'Фото КЕ Монитор', hint: 'Текст маркировок, чеков ККМ, отметок планограмм должен быть читаемым; Изображение должно быть четким; На фотографиях КЕ четко видно наклейку и оборудование, фотографии только с крупным планом приниматься не будут.' },
       { id: 'ke_golosovoy', name: 'Фото КЕ Голосовой шлюз', filename: 'Фото КЕ Голосовой шлюз', hint: 'Текст маркировок, чеков ККМ, отметок планограмм должен быть читаемым; Изображение должно быть четким; На фотографиях КЕ четко видно наклейку и оборудование, фотографии только с крупным планом приниматься не будут.' },
       { id: 'ke_router_master', name: 'Фото КЕ Роутер Мастер', filename: 'Фото КЕ Роутер Мастер', hint: 'Текст маркировок, чеков ККМ, отметок планограмм должен быть читаемым; Изображение должно быть четким; На фотографиях КЕ четко видно наклейку и оборудование, фотографии только с крупным планом приниматься не будут.' },
       { id: 'ke_router_rezerv', name: 'Фото КЕ Роутер Резерв', filename: 'Фото КЕ Роутер Резерв', hint: 'Текст маркировок, чеков ККМ, отметок планограмм должен быть читаемым; Изображение должно быть четким; На фотографиях КЕ четко видно наклейку и оборудование, фотографии только с крупным планом приниматься не будут.' },
@@ -228,7 +228,7 @@ const PHOTO_TYPES = {
   kso: {
     photo: [
       { id: 'obshiy_vid_kso', name: 'Фото общего вида КСО (общий)', filename: 'Фото общего вида КСО (общий)', multi: true, hint: 'Видно расположение оборудования (ККМ, ТБО,панель весов) установленного на столе/стойке.' },
-      { id: 'tumba', name: 'Фото тумбы КСО (общий вид, монтаж СКС_кабелей)', filename: 'Фото тумбы КСО (общий вид, монтаж СКС_кабелей)', multi: true, maxPhotos: 4, hint: 'Видно монтаж кабелей СКС.' },
+      { id: 'tumba', name: 'Фото тумбы КСО (общий вид, монтаж СКС _кабелей)', filename: 'Фото тумбы КСО (общий вид, монтаж СКС _кабелей)', multi: true, maxPhotos: 4, hint: 'Видно монтаж кабелей СКС.' },
       { id: 'kkt_chek', name: 'Фото ККТ + чек ККМ', filename: 'Фото ККТ + чек ККМ', multi: true, hint: 'Видно, что ККТ иммет все элементы (крышка, корпус и т.д.),Четко видно снятый Х-отчет (без гашения): - дату на чеке; - качество печати; - отсутствуют срезы печати по левому/правому краям чека. - сработавший отрезчик;' },
       { id: 'markirovka_bp', name: 'Фото маркировки БП', filename: 'Фото маркировки БП', multi: true, hint: 'Четко видно маркировку всех блоков питания Видно, что блок розеток не висит на проводах, а прикреплен стяжками к ИБП или расположен на полке стола/стойки КСО.' },
       { id: 'montazh_tbo', name: 'Фото монтажа ТБО', filename: 'Фото монтажа ТБО', multi: true, hint: 'Видно как смонтирован ТБО, заведен ли провод в подставку или притянут стяжкой к подствке; ТБО должен быть закреплен на кронштейне в штатные места для крепления. Монтаж на стяжки не допускается' },
@@ -378,13 +378,15 @@ function generateSections(type, equipmentCounts) {
         numSuffix = n;
       } else if (['kassa_zona', 'kso', 'vesi_napolnie', 'vesi_samoobsl', 'vesi_pechat', 'mp', 'stp', 'rmd', 'server'].includes(eq.id)) {
         sectionName = `${eq.name} ${n}`;
-        sectionPrefix = eq.name;
+        sectionPrefix = eq.archiveName || eq.name;
         numSuffix = n;
       } else {
         sectionName = eq.name;
-        sectionPrefix = eq.name;
+        sectionPrefix = eq.archiveName || eq.name;
         numSuffix = '';
       }
+
+      const archiveName = numSuffix ? `${sectionPrefix} ${numSuffix}` : sectionPrefix;
 
       const photoTypes = getPhotoTypes(eq.id).filter(pt => {
         if (type === 'mk' && eq.id === 'kassa' && (pt.id === 'ke_monitor' || pt.id === 'sn_monitor')) return false;
@@ -407,6 +409,7 @@ function generateSections(type, equipmentCounts) {
       sections.push({
         id: `${eq.id}_${n}`,
         name: sectionName,
+        archiveName: archiveName,
         prefix: sectionPrefix,
         num: numSuffix,
         type: eq.id,
@@ -422,6 +425,7 @@ function generateSections(type, equipmentCounts) {
     sections.push({
       id: 'prochee',
       name: 'Прочее',
+      archiveName: 'Прочее',
       prefix: 'Прочее',
       num: '',
       type: 'prochee',

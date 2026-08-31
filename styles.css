@@ -1287,6 +1287,22 @@ body {
   margin-bottom: 24px;
 }
 
+.complete-warning {
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--warning);
+  background: #FFF8E1;
+  border: 1px solid #FFE082;
+  border-radius: var(--radius-md);
+}
+
+.complete-warning.hidden {
+  display: none;
+}
+
 .stat {
   text-align: center;
 }
@@ -2620,6 +2636,11 @@ body {
 
 .dark .finish-status.warning {
   background: rgba(255, 149, 0, 0.1);
+}
+
+.dark .complete-warning {
+  background: rgba(255, 149, 0, 0.1);
+  border-color: rgba(255, 149, 0, 0.3);
 }
 
 .dark .finish-status.success {
