@@ -277,18 +277,25 @@
 
   function performUpdate() {
     document.getElementById('menu-dropdown').classList.add('hidden');
-    showToast('Обновление...');
-    localStorage.setItem('appVersion', String(Date.now()));
-    const promises = [];
-    if ('caches' in window) {
-      promises.push(caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))));
-    }
-    if ('serviceWorker' in navigator) {
-      promises.push(navigator.serviceWorker.getRegistrations().then(regs => {
-        regs.forEach(reg => reg.unregister());
-      }));
-    }
-    Promise.all(promises).finally(() => location.reload());
+    showToast('Проверка обновления...');
+    fetch('version.json?t=' + Date.now(), { cache: 'no-cache' })
+      .then(r => r.json())
+      .then(data => {
+        const ver = String(data.version || Date.now());
+        localStorage.setItem('appVersion', ver);
+        showToast('Обновление...');
+        const promises = [];
+        if ('caches' in window) {
+          promises.push(caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))));
+        }
+        if ('serviceWorker' in navigator) {
+          promises.push(navigator.serviceWorker.getRegistrations().then(regs => {
+            regs.forEach(reg => reg.unregister());
+          }));
+        }
+        Promise.all(promises).finally(() => location.reload());
+      })
+      .catch(() => showToast('Обновление недоступно без интернета'));
   }
 
   function setupEventListeners() {
