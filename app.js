@@ -1,7 +1,7 @@
 (function() {
   'use strict';
 
-  let APP_VERSION = localStorage.getItem('appVersion') || '1.0.8.0';
+  let APP_VERSION = localStorage.getItem('appVersion') || '1.0.8.1';
 
   if ('serviceWorker' in navigator || 'caches' in window) {
     if (localStorage.getItem('sw_killed') !== '1') {
@@ -110,7 +110,18 @@
       const req = tx.objectStore(STORE_NAME).get('__fsHandle__');
       req.onsuccess = async () => {
         if (req.result && req.result.handle) {
-          try { _fsDirHandle = req.result.handle; } catch(e) { _fsDirHandle = null; }
+          try {
+            _fsDirHandle = req.result.handle;
+            const perm = await _fsDirHandle.queryPermission({ mode: 'readwrite' });
+            _fsPermState = perm;
+            if (perm === 'prompt') {
+              const askPerm = () => {
+                document.removeEventListener('pointerdown', askPerm);
+                _fsDirHandle.requestPermission({ mode: 'readwrite' }).then(p => { _fsPermState = p; }).catch(() => {});
+              };
+              document.addEventListener('pointerdown', askPerm);
+            }
+          } catch(e) { _fsDirHandle = null; }
         }
       };
     } catch(e) {}
@@ -406,6 +417,18 @@
     document.getElementById('btn-finish-report').addEventListener('click', () => {
       finishReport();
     });
+    document.getElementById('finish-confirm-back').addEventListener('click', closeFinishConfirm);
+    document.getElementById('finish-confirm-ok').addEventListener('click', () => {
+      closeFinishConfirm();
+      completeReport();
+    });
+    document.getElementById('btn-back-to-report').addEventListener('click', () => {
+      if (currentReport) {
+        currentReport.status = 'draft';
+        saveReport();
+        showChecklist();
+      }
+    });
     document.getElementById('btn-save-section').addEventListener('click', saveCurrentSection);
     document.getElementById('kso-no-scales').addEventListener('change', function() {
       const section = currentReport.sections[currentSectionIndex];
@@ -572,16 +595,27 @@
     const folderBtn = document.getElementById('settings-folder-btn');
     const folderStatus = document.getElementById('settings-folder-status');
     if (folderBtn && folderStatus) {
-      if (_fsDirHandle) { folderStatus.textContent = '✅ Папка: ' + _fsDirHandle.name; }
       const updateFolderStatus = () => {
-        if (_fsDirHandle) { folderStatus.textContent = '✅ Папка: ' + _fsDirHandle.name; return; }
+        if (_fsDirHandle) {
+          if (_fsPermState === 'denied') {
+            folderStatus.textContent = '⚠️ Доступ к папке запрещён. Нажмите кнопку, чтобы выбрать снова.';
+          } else {
+            folderStatus.textContent = '✅ Папка: ' + _fsDirHandle.name;
+          }
+          return;
+        }
         if (localStorage.getItem('_fsFolderName')) {
           folderStatus.textContent = '⚠️ Папка была выбрана, но дескриптор утерян. Нажмите кнопку, чтобы выбрать снова.';
         } else {
           folderStatus.textContent = '';
         }
       };
-      updateFolderStatus();
+      if (!window.showDirectoryPicker) {
+        folderBtn.style.display = 'none';
+        folderStatus.textContent = 'Выбор папки недоступен в этом браузере';
+      } else {
+        updateFolderStatus();
+      }
       folderBtn.addEventListener('click', async () => {
         if (!window.showDirectoryPicker) { showToast('Ваш браузер не поддерживает выбор папки'); return; }
         try {
@@ -594,7 +628,15 @@
           folderStatus.textContent = '✅ Папка выбрана: ' + _fsDirHandle.name;
           showToast('Папка сохранена');
           loadDrafts();
-        } catch(e) { if (e.name !== 'AbortError') showToast('Ошибка выбора папки'); }
+        } catch(e) {
+          if (e.name !== 'AbortError') {
+            let msg = 'Ошибка выбора папки: ' + (e.name || 'неизвестная ошибка');
+            if (e.name === 'NotAllowedError' || e.name === 'SecurityError') {
+              msg += '. Разрешите браузеру доступ к файлам (настройки Android)';
+            }
+            showToast(msg);
+          }
+        }
       });
     }
 
@@ -1037,15 +1079,31 @@
   }
 
   let _fsDirHandle = null;
+  let _fsPermState = 'unknown';
+  let _fsPermToastShown = false;
 
   async function saveToFolder(report) {
     if (!_fsDirHandle) return;
     try {
+      let perm = 'unknown';
+      try { perm = await _fsDirHandle.queryPermission({ mode: 'readwrite' }); } catch(e) {}
+      if (perm !== 'granted') {
+        try { perm = await _fsDirHandle.requestPermission({ mode: 'readwrite' }); } catch(e) {}
+      }
+      if (perm !== 'granted') {
+        _fsPermState = perm;
+        if (!_fsPermToastShown) {
+          _fsPermToastShown = true;
+          showToast('Доступ к папке утерян — выберите её заново в настройках');
+        }
+        return;
+      }
       const name = report.reportName + '_' + (report.date || 'nodate') + '_' + report.id.slice(-6) + '.json';
       const fileHandle = await _fsDirHandle.getFileHandle(name.replace(/[<>:"/\\|?*]/g, '_'), { create: true });
       const writable = await fileHandle.createWritable();
       await writable.write(JSON.stringify(report, null, 2));
       await writable.close();
+      _fsPermState = 'granted';
     } catch(e) { console.warn('Folder save failed', e); }
   }
 
@@ -1891,16 +1949,17 @@
       return count < 1;
     });
 
-    if (missing.length > 0) {
-      showToast(`Не сделаны: ${missing[0].name}`);
-      return;
-    }
-
     saveReport();
     updateProgress();
     renderSectionsChecklist();
     showPage('checklist');
-    showToast('Секция сохранена');
+    if (missing.length > 0) {
+      const names = missing.map(m => m.name);
+      const label = names.length <= 3 ? names.join(', ') : names.slice(0, 3).join(', ') + ' и ещё ' + (names.length - 3);
+      showToast(`Сохранено. Не сделаны: ${label}`);
+    } else {
+      showToast('Секция сохранена');
+    }
   }
 
   async function openKEModal() {
@@ -2317,12 +2376,12 @@
       timestamp: new Date().toISOString()
     });
     
+    const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
     if (pendingScanCode) {
-      const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
       addKECode(pendingScanCode, pt?.isSN);
       pendingScanCode = null;
-    } else {
-      tryDecodeFromCapture(canvas);
+    } else if (pt && (pt.isKE || pt.isSN)) {
+      queueKESNDetection(canvas, pt.isSN);
     }
     
     const frame = document.getElementById('ke-cam-frame');
@@ -2338,48 +2397,6 @@
     const galleryModal = document.getElementById('photo-gallery-modal');
     if (galleryModal && !galleryModal.classList.contains('hidden')) renderGalleryGrid(section);
     closeKEModal();
-  }
-
-  function tryDecodeFromCapture(canvas) {
-    const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
-    const isSN = pt?.isSN;
-    if (typeof ZXing !== 'undefined') {
-      try {
-        const ctx = canvas.getContext('2d');
-        const w = canvas.width, h = canvas.height;
-        const imgData = ctx.getImageData(0, 0, w, h);
-        const lum = new ZXing.RGBLuminanceSource(imgData.data, w, h);
-        const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
-        const hints = new Map();
-        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-          ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
-          ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
-          ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.UPC_A,
-          ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.ITF
-        ]);
-        const reader = new ZXing.MultiFormatReader();
-        reader.setHints(hints);
-        const result = reader.decode(bmp);
-        if (result && result.getText()) {
-          const code = result.getText();
-          if (isSN || isKECode(code)) {
-            addKECode(code, isSN);
-            showToast('ШК распознан: ' + code);
-            return;
-          }
-        }
-      } catch(e) {}
-    }
-    const label = isSN ? 'СН' : 'КЕ';
-    const entered = prompt('Номер ' + label + ' не распознан. Введите вручную (не обязательно):');
-    if (entered && entered.trim()) {
-      const code = entered.trim();
-      if (isSN || isKECode(code)) {
-        addKECode(code, isSN);
-      } else {
-        showToast('Некорректный номер ' + label);
-      }
-    }
   }
 
   let keSnGalleryChain = Promise.resolve();
@@ -2468,7 +2485,7 @@
   }
 
   function queueKESNDetection(canvas, isSN) {
-    keSnGalleryChain = keSnGalleryChain.then(() => handleKESNPhotoCodes(canvas, isSN)).catch(() => {});
+    keSnGalleryChain = keSnGalleryChain.then(() => handleKESNPhotoCodes(canvas, isSN)).catch(() => showToast('Ошибка распознавания ШК'));
   }
 
   async function handleKESNPhotoCodes(canvas, isSN) {
@@ -2636,12 +2653,25 @@
   function finishReport() {
     const { done, total } = getReportPhotoProgress();
     if (done < total) {
-      if (!confirm(`Не все фото сделаны: ${done} из ${total}.\nВсё равно завершить отчёт?`)) return;
+      const textEl = document.getElementById('finish-confirm-text');
+      if (textEl) textEl.textContent = `Сделано ${done} из ${total} обязательных фото. Завершить отчёт без всех фото?`;
+      const modal = document.getElementById('finish-confirm-modal');
+      if (modal) modal.classList.remove('hidden');
+      return;
     }
+    completeReport();
+  }
+
+  function completeReport() {
     currentReport.status = 'completed';
     currentReport.completedAt = new Date().toISOString();
     saveReport();
     showComplete();
+  }
+
+  function closeFinishConfirm() {
+    const modal = document.getElementById('finish-confirm-modal');
+    if (modal) modal.classList.add('hidden');
   }
 
   function showComplete() {
@@ -2794,11 +2824,13 @@
       cachedZipBlob = blob;
       btn.disabled = false;
       btn.innerHTML = `<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Отправить отчёт`;
-    }).catch(() => {
+    }).catch((err) => {
       clearTimeout(timer);
-      if (reportDiscarded) return;
-      btn.disabled = false;
-      btn.textContent = 'Отправить отчёт';
+      if (!reportDiscarded) {
+        btn.disabled = false;
+        btn.textContent = 'Отправить отчёт';
+        showToast('Ошибка создания архива: ' + (err && err.message ? err.message : 'неизвестная ошибка'));
+      }
     });
   }
 

@@ -2816,3 +2816,46 @@ body {
 .dark .form-group textarea::placeholder {
   color: var(--text-secondary);
 }
+
+/* Finish Confirm Modal */
+#finish-confirm-modal {
+  background: rgba(0, 0, 0, 0.55);
+  justify-content: center;
+}
+
+.finish-confirm-card {
+  background: var(--background);
+  border-radius: 16px;
+  padding: 22px 20px 18px;
+  max-width: 340px;
+  width: calc(100% - 40px);
+  margin: 0 auto;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+}
+
+.finish-confirm-card h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+
+.finish-confirm-card p {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #666;
+}
+
+.finish-confirm-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.finish-confirm-actions .btn {
+  flex: 1;
+  white-space: normal;
+}
+
+.dark .finish-confirm-card p {
+  color: var(--text-secondary);
+}

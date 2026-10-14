@@ -10,7 +10,7 @@
   <title>Фото Отчёты</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23DC0000' width='100' height='100' rx='20'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white'>M</text></svg>">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=1.0.8.1">
 </head>
 <body>
   <header class="header">
@@ -259,6 +259,7 @@
           <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Отправить отчёт
         </button>
+        <button class="btn btn-text" id="btn-back-to-report">Вернуться к отчёту</button>
         <button class="btn btn-text" id="btn-new-from-complete">Создать новый отчёт</button>
         <button class="btn btn-danger btn-block" id="btn-delete-report">Удалить отчёт</button>
       </div>
@@ -285,6 +286,7 @@
             <li><strong>Долгое нажатие (1.5 сек)</strong> — на Android и ПК: выбрать фото из галереи.</li>
             <li><strong>КЕ (инвентарные номера)</strong> — открывает сканер ШК. Наведите камеру на наклейку КЕ, подтвердите код, сделайте фото.</li>
             <li><strong>Серийные номера (СН)</strong> — то же для серийных номеров.</li>
+            <li>Фото КЕ/СН можно выбрать из <strong>галереи</strong> — ШК на снимке распознаются автоматически.</li>
           </ul>
         </div>
         <div class="help-section">
@@ -293,12 +295,14 @@
           <ul>
             <li><strong>Жёлтые блоки</strong> — вокруг найденных ШК на экране. Нажмите на блок, чтобы выбрать код.</li>
             <li><strong>Подтверждение</strong> — после выбора появится панель с номером. Нажмите <strong>«Подтвердить»</strong>.</li>
-            <li><strong>Зелёная рамка</strong> — код подтверждён и в кадре. Удерживайте и нажмите <strong>«Сделать фото»</strong>.</li>
+            <li><strong>Зелёная рамка</strong> — код подтверждён и в кадре. Удерживайте камеру на коде и нажмите <strong>«Сделать фото»</strong>.</li>
             <li><strong>Красная рамка</strong> — код пропал из кадра. Верните камеру на ШК.</li>
-            <li>Если ШК не читается — при нажатии «Сделать фото» будет попытка распознать код из кадра. Если не выйдет, появится окно ручного ввода.</li>
-            <li>Для выбора фото с кодом из галереи — нажмите на левую зону (60px) кнопки КЕ/СН.</li>
+            <li><strong>Зум</strong> — кнопка 1×/2×/3×: приблизьте камеру, чтобы прочитать мелкий ШК.</li>
+            <li><strong>Фонарик</strong> — кнопка появляется, если камера телефона его поддерживает.</li>
+            <li><strong>Фото без выбранного кода</strong> — нажмите «Сделать фото», не выбирая код: приложение найдёт все ШК на снимке. Один код добавится сам, несколько — появится окно выбора, ни одного — окно ручного ввода.</li>
           </ul>
-          <p>В настройках можно повысить качество сканера для мелких ШК. На iOS доступен специальный режим (720p ZXing) — выбран по умолчанию.</p>
+          <p>Фото с кодом из галереи устройства (левая зона 60px кнопки КЕ/СН или долгое нажатие) распознаётся так же: один код добавится сам, при нескольких откроется выбор, при отсутствии — ручной ввод.</p>
+          <p>В настройках можно повысить качество сканера для мелких ШК. На iPhone по умолчанию включён режим <strong>iOS (720p / ZXing)</strong>.</p>
           <p><strong>Экономия батареи:</strong> в настройках можно отключить постоянное автосканирование — камера будет работать только при съёмке, а код распознается из фото.</p>
         </div>
         <div class="help-section">
@@ -318,9 +322,18 @@
           <p>Внутри секции <strong>КСО</strong> есть чекбокс <strong>«КСО без весов»</strong> — при включении скрываются типы фото «Весы», «СН весы» и «Фото обслуженной весовой панели».</p>
         </div>
         <div class="help-section">
+          <h3>Сохранение и черновики</h3>
+          <ul>
+            <li>Кнопка <strong>«Сохранить»</strong> внизу секции сохраняет отчёт и возвращает к чек-листу. Если фото не все — покажет, каких не хватает.</li>
+            <li>Отчёты автоматически сохраняются в приложении: список <strong>черновиков</strong> — на главном экране. Можно закрыть приложение и продолжить позже.</li>
+            <li><strong>Папка с копиями:</strong> в настройках нажмите «Выбрать папку для сохранения копий с фото» — копии отчётов будут сохраняться в выбранную папку на телефоне. Это защита от потери отчётов при очистке данных сайта. Доступно в Chrome на Android; на iPhone недоступно.</li>
+          </ul>
+        </div>
+        <div class="help-section">
           <h3>Чек-лист и завершение</h3>
           <p>На странице чек-листа отображаются все секции с прогрессом. Если нужно изменить количество оборудования — нажмите <strong>«Изменить состав оборудования»</strong>. При увеличении добавятся новые секции, при уменьшении удалятся только пустые.</p>
-          <p>Когда все фото сделаны, нажмите <strong>«Завершить отчёт»</strong>. На странице завершения нажмите <strong>«Отправить отчёт»</strong>. Приложение создаст ZIP-архив с фото, XLSX, JSON и Коды.txt, затем откроет меню отправки.</p>
+          <p>Когда все фото сделаны, нажмите <strong>«Завершить отчёт»</strong>. Если каких-то фото не хватает, приложение предупредит и предложит продолжить заполнение или завершить отчёт без них.</p>
+          <p>На странице завершения: <strong>«Отправить отчёт»</strong> — создаст ZIP-архив с фото, XLSX, JSON и Коды.txt и откроет меню отправки; <strong>«Вернуться к отчёту»</strong> — если нужно доснять фото.</p>
         </div>
         <div class="help-section">
           <h3>Экспорт</h3>
@@ -464,6 +477,18 @@
     </div>
   </div>
 
+  <!-- FINISH CONFIRM MODAL (неполные фото при завершении отчёта) -->
+  <div id="finish-confirm-modal" class="modal-overlay hidden">
+    <div class="finish-confirm-card">
+      <h3>Не все фото сделаны</h3>
+      <p id="finish-confirm-text"></p>
+      <div class="finish-confirm-actions">
+        <button class="btn btn-secondary" id="finish-confirm-back">Продолжить заполнение</button>
+        <button class="btn btn-primary" id="finish-confirm-ok">Завершить</button>
+      </div>
+    </div>
+  </div>
+
   <!-- PHOTO PREVIEW MODAL (KE/SN + gallery full preview) -->
   <div id="photo-preview-modal" class="modal-overlay hidden">
     <div class="preview-wrap">
@@ -535,7 +560,7 @@
   <script src="lib/jszip.min.js"></script>
   <script src="lib/zxing.min.js"></script>
   <script src="lib/xlsx.min.js"></script>
-  <script src="data.js"></script>
-  <script src="app.js"></script>
+  <script src="data.js?v=1.0.8.1"></script>
+  <script src="app.js?v=1.0.8.1"></script>
 </body>
 </html>

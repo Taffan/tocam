@@ -1,4 +1,4 @@
-const CACHE_NAME = 'foto-reports-v24';
+const CACHE_NAME = 'foto-reports-v25';
 
 const PRECACHE = [
   './',
@@ -44,7 +44,7 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
   if (url.pathname.includes('version.json')) {
-    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+    event.respondWith(fetch(event.request).catch(() => caches.match(event.request, { ignoreSearch: true })));
     return;
   }
 
@@ -56,7 +56,7 @@ self.addEventListener('fetch', (event) => {
       }
       return response;
     }).catch(() => {
-      return caches.match(event.request).then((cached) => {
+      return caches.match(event.request, { ignoreSearch: true }).then((cached) => {
         return cached || new Response('Offline', { status: 503 });
       });
     })
