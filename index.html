@@ -432,6 +432,7 @@
         <button class="btn btn-sm btn-primary" id="ke-cam-confirm-yes">Подтвердить</button>
       </div>
       <div class="ke-cam-status" id="ke-cam-status">Наведите на штрих-код</div>
+      <button class="ke-cam-zoom" id="ke-cam-zoom" title="Зум">1×</button>
       <button class="ke-cam-torch" id="ke-cam-torch" title="Фонарик">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l-4-4 9-9 4 4-9 9z"/><path d="M13 6l4 4"/><path d="M5 14l4 4"/></svg>
       </button>
@@ -442,6 +443,24 @@
         Сделать фото
       </button>
       <button class="btn btn-secondary" id="ke-cam-close">Отмена</button>
+    </div>
+  </div>
+
+  <!-- BARCODE PICK MODAL (выбор ШК на фото из галереи для КЕ/СН) -->
+  <div id="barcode-pick-modal" class="modal-overlay hidden">
+    <div class="barcode-pick-wrap">
+      <div class="barcode-pick-header">Выберите штрих-код</div>
+      <div class="barcode-pick-body">
+        <div class="barcode-pick-image-wrap" id="barcode-pick-image-wrap">
+          <img id="barcode-pick-image" src="" alt="">
+          <div class="barcode-pick-boxes" id="barcode-pick-boxes"></div>
+        </div>
+      </div>
+      <div class="barcode-pick-status" id="barcode-pick-status"></div>
+      <div class="barcode-pick-actions">
+        <button class="btn btn-secondary" id="barcode-pick-manual">Ввести вручную</button>
+        <button class="btn btn-secondary" id="barcode-pick-cancel">Отмена</button>
+      </div>
     </div>
   </div>
 

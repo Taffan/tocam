@@ -1,7 +1,7 @@
 (function() {
   'use strict';
 
-  let APP_VERSION = localStorage.getItem('appVersion') || '1.0.7.0';
+  let APP_VERSION = localStorage.getItem('appVersion') || '1.0.8.0';
 
   if ('serviceWorker' in navigator || 'caches' in window) {
     if (localStorage.getItem('sw_killed') !== '1') {
@@ -83,6 +83,9 @@
   let serverNamePromptResolve = null;
   let detectFailCount = 0;
   let torchOn = false;
+  let scannerZoom = 1;
+  let nativeZoomCaps = null;
+  let zoomCanvas = null;
   let deferredPrompt = null;
   let _updateBubble = null;
   let longPressTimer = null;
@@ -426,6 +429,9 @@
     });
 
     document.getElementById('ke-cam-torch').addEventListener('click', toggleTorch);
+    document.getElementById('ke-cam-zoom').addEventListener('click', toggleZoom);
+    document.getElementById('barcode-pick-manual').addEventListener('click', barcodePickManual);
+    document.getElementById('barcode-pick-cancel').addEventListener('click', closeBarcodePickModal);
     document.getElementById('ke-cam-capture').addEventListener('click', keCamCapture);
     document.getElementById('ke-cam-close').addEventListener('click', closeKEModal);
     document.getElementById('ke-cam-confirm-yes').addEventListener('click', () => {
@@ -1495,6 +1501,169 @@
     return { width: { ideal: 1280 }, height: { ideal: 720 } };
   }
 
+  function isDigitalZoom() {
+    return scannerZoom > 1 && !nativeZoomCaps;
+  }
+
+  function applyZoomVisual() {
+    const video = document.getElementById('ke-cam-video');
+    const overlays = document.getElementById('ke-cam-overlays');
+    const zoomBtn = document.getElementById('ke-cam-zoom');
+    if (zoomBtn) {
+      zoomBtn.textContent = Number.isInteger(scannerZoom) ? scannerZoom + '×' : scannerZoom.toFixed(1) + '×';
+      zoomBtn.classList.toggle('on', scannerZoom > 1);
+    }
+    const t = isDigitalZoom() && scannerZoom > 1 ? 'scale(' + scannerZoom + ')' : '';
+    if (video) video.style.transform = t;
+    if (overlays) overlays.style.transform = t;
+  }
+
+  function resetScannerZoom() {
+    scannerZoom = 1;
+    nativeZoomCaps = null;
+    applyZoomVisual();
+  }
+
+  function initScannerCapabilities() {
+    try {
+      const track = videoStream ? videoStream.getVideoTracks()[0] : null;
+      const caps = track && track.getCapabilities ? track.getCapabilities() : null;
+      nativeZoomCaps = caps && caps.zoom && typeof caps.zoom.max === 'number' && caps.zoom.max > (caps.zoom.min || 0) ? caps.zoom : null;
+      const torchBtn = document.getElementById('ke-cam-torch');
+      if (torchBtn) torchBtn.classList.toggle('hidden', !(caps && caps.torch === true));
+    } catch (e) {}
+  }
+
+  function toggleZoom() {
+    if (!keModalOpen) return;
+    const track = videoStream ? videoStream.getVideoTracks()[0] : null;
+    const next = scannerZoom >= 3 ? 1 : scannerZoom + 1;
+    if (next === 1) {
+      if (nativeZoomCaps && track) {
+        track.applyConstraints({ advanced: [{ zoom: nativeZoomCaps.min }] }).catch(() => {});
+      }
+      scannerZoom = 1;
+      applyZoomVisual();
+      return;
+    }
+    if (nativeZoomCaps && track) {
+      const target = Math.min(nativeZoomCaps.max, Math.max(nativeZoomCaps.min || 1, next));
+      track.applyConstraints({ advanced: [{ zoom: target }] }).then(() => {
+        scannerZoom = target;
+        applyZoomVisual();
+      }).catch(() => {
+        nativeZoomCaps = null;
+        scannerZoom = next;
+        applyZoomVisual();
+        restartScannerDecoding();
+      });
+    } else {
+      const changed = scannerZoom !== next;
+      scannerZoom = next;
+      applyZoomVisual();
+      if (changed) restartScannerDecoding();
+    }
+  }
+
+  function getZoomCrop(video) {
+    if (!isDigitalZoom() || !video || !video.videoWidth) return null;
+    const vw = video.videoWidth, vh = video.videoHeight;
+    const sw = Math.max(2, Math.round(vw / scannerZoom));
+    const sh = Math.max(2, Math.round(vh / scannerZoom));
+    return { sx: Math.round((vw - sw) / 2), sy: Math.round((vh - sh) / 2), sw: sw, sh: sh };
+  }
+
+  function drawZoomCrop(video) {
+    const c = getZoomCrop(video);
+    if (!c) return null;
+    if (!zoomCanvas) zoomCanvas = document.createElement('canvas');
+    if (zoomCanvas.width !== c.sw || zoomCanvas.height !== c.sh) { zoomCanvas.width = c.sw; zoomCanvas.height = c.sh; }
+    zoomCanvas.getContext('2d').drawImage(video, c.sx, c.sy, c.sw, c.sh, 0, 0, c.sw, c.sh);
+    return { canvas: zoomCanvas, offX: c.sx, offY: c.sy };
+  }
+
+  function startScannerDecoding(video) {
+    const modal = document.getElementById('ke-camera-modal');
+    const status = document.getElementById('ke-cam-status');
+    if (localStorage.getItem('batterySaver') === 'true') {
+      if (status) {
+        status.textContent = 'Экономия батареи: наведите на ШК и нажмите «Сделать фото». Код распознается из фото.';
+        status.className = 'ke-cam-status';
+      }
+      return;
+    }
+    if (localStorage.getItem('scannerQuality') === 'ios') {
+      if (typeof ZXing !== 'undefined') {
+        (function waitReady(n) { if (modal.classList.contains('hidden')) return; if (video.readyState >= 2 && video.videoWidth > 0) initZXingScannerInterval(video); else if (n < 50) setTimeout(waitReady, 100, n + 1); else initZXingScannerInterval(video); })(0);
+      } else showToast('Сканер не поддерживается — используйте фото');
+      return;
+    }
+    if ('BarcodeDetector' in window) {
+      try {
+        const det = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417'] });
+        detectFailCount = 0;
+        let silentCount = 0;
+        const startDetect = () => {
+          if (scanTimer) return;
+          scanTimer = setInterval(async () => {
+            if (scanCooldown || video.readyState < 2 || !video.videoWidth) return;
+            try {
+              const crop = isDigitalZoom() ? drawZoomCrop(video) : null;
+              const raw = await det.detect(crop ? crop.canvas : video);
+              const codes = raw.map(cd => {
+                const bb = cd.boundingBox;
+                if (!crop || !bb || typeof bb.x !== 'number') return cd;
+                return { rawValue: cd.rawValue, boundingBox: { x: bb.x + crop.offX, y: bb.y + crop.offY, width: bb.width, height: bb.height } };
+              });
+              if (codes.length) silentCount = 0; else silentCount++;
+              if (detectFailCount) detectFailCount = 0;
+              if (pendingScanCode) {
+                updateTrackingUI(codes.some(c => c.rawValue === pendingScanCode));
+              } else if (codes.length) {
+                showBarcodeOverlays(codes, video.videoWidth, video.videoHeight);
+              }
+              if (silentCount > 15 && typeof ZXing !== 'undefined') {
+                clearInterval(scanTimer); scanTimer = null;
+                initZXingScanner(video);
+              }
+            } catch(e) {
+              detectFailCount++;
+              if (detectFailCount > 10) {
+                clearInterval(scanTimer); scanTimer = null;
+                if (typeof ZXing !== 'undefined') initZXingScanner(video);
+                else showToast('Сканер не поддерживается — используйте фото');
+              }
+            }
+          }, 300);
+        };
+        (function waitReady(n) { if (modal.classList.contains('hidden')) return; if (video.readyState >= 2 && video.videoWidth > 0) startDetect(); else if (n < 25) setTimeout(waitReady, 200, n + 1); else if (typeof ZXing !== 'undefined') initZXingScanner(video); })(0);
+      } catch(e) {
+        if (typeof ZXing !== 'undefined') initZXingScanner(video);
+        else showToast('Сканер не поддерживается — используйте фото');
+      }
+      return;
+    }
+    if (typeof ZXing !== 'undefined') {
+      initZXingScanner(video);
+    } else {
+      showToast('Сканер не поддерживается — используйте фото');
+    }
+  }
+
+  function restartScannerDecoding() {
+    if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+    if (window._zxingScanTimer) { clearInterval(window._zxingScanTimer); window._zxingScanTimer = null; }
+    if (window._zxingOverlayTimer) { clearInterval(window._zxingOverlayTimer); window._zxingOverlayTimer = null; }
+    if (window._zxingBrowserReader) { window._zxingBrowserReader.reset(); window._zxingBrowserReader = null; }
+    window._zxingDetectedCodes = null;
+    cachedOverlayCodes = '';
+    const overlays = document.getElementById('ke-cam-overlays');
+    if (overlays) overlays.innerHTML = '';
+    if (localStorage.getItem('batterySaver') === 'true') return;
+    const video = document.getElementById('ke-cam-video');
+    if (keModalOpen && video && video.videoWidth) startScannerDecoding(video);
+  }
+
   function getEXIFOrientation(file) {
     return new Promise(resolve => {
       const blob = file.slice(0, 65536);
@@ -1594,6 +1763,10 @@
         } else {
           renderSectionPhotos(section);
           renderPhotoTypes(section);
+        }
+        const ptAdded = section.photoTypes.find(t => t.id === selectedPhotoType);
+        if (ptAdded && (ptAdded.isKE || ptAdded.isSN)) {
+          queueKESNDetection(canvas, ptAdded.isSN);
         }
         scheduleAutoSave();
       };
@@ -1758,57 +1931,9 @@
       try { await video.play(); } catch(e) {}
       scanCooldown = false;
 
-      if (localStorage.getItem('batterySaver') === 'true') {
-        if (status) {
-          status.textContent = 'Экономия батареи: наведите на ШК и нажмите «Сделать фото». Код распознается из фото.';
-          status.className = 'ke-cam-status';
-        }
-      } else if (localStorage.getItem('scannerQuality') === 'ios') {
-        if (typeof ZXing !== 'undefined') {
-          (function waitReady(n) { if (modal.classList.contains('hidden')) return; if (video.readyState >= 2 && video.videoWidth > 0) initZXingScannerInterval(video); else if (n < 50) setTimeout(waitReady, 100, n + 1); else initZXingScannerInterval(video); })(0);
-        } else showToast('Сканер не поддерживается — используйте фото');
-      } else if ('BarcodeDetector' in window) {
-        try {
-          const det = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417'] });
-          detectFailCount = 0;
-          let silentCount = 0;
-          const startDetect = () => {
-            if (scanTimer) return;
-            scanTimer = setInterval(async () => {
-              if (scanCooldown || video.readyState < 2 || !video.videoWidth) return;
-              try {
-                const codes = await det.detect(video);
-                if (codes.length) silentCount = 0; else silentCount++;
-                if (detectFailCount) detectFailCount = 0;
-                if (pendingScanCode) {
-                  updateTrackingUI(codes.some(c => c.rawValue === pendingScanCode));
-                } else if (codes.length) {
-                  showBarcodeOverlays(codes, video.videoWidth, video.videoHeight);
-                }
-                if (silentCount > 15 && typeof ZXing !== 'undefined') {
-                  clearInterval(scanTimer); scanTimer = null;
-                  initZXingScanner(video);
-                }
-              } catch(e) {
-                detectFailCount++;
-                if (detectFailCount > 10) {
-                  clearInterval(scanTimer); scanTimer = null;
-                  if (typeof ZXing !== 'undefined') initZXingScanner(video);
-                  else showToast('Сканер не поддерживается — используйте фото');
-                }
-              }
-            }, 300);
-          };
-          (function waitReady(n) { if (video.readyState >= 2 && video.videoWidth > 0) startDetect(); else if (n < 25) setTimeout(waitReady, 200, n + 1); else if (typeof ZXing !== 'undefined') initZXingScanner(video); })(0);
-        } catch(e) {
-          if (typeof ZXing !== 'undefined') initZXingScanner(video);
-          else showToast('Сканер не поддерживается — используйте фото');
-        }
-      } else if (typeof ZXing !== 'undefined') {
-        initZXingScanner(video);
-      } else {
-        showToast('Сканер не поддерживается — используйте фото');
-      }
+      resetScannerZoom();
+      initScannerCapabilities();
+      startScannerDecoding(video);
     } catch (err) {
       if (err.name === 'NotAllowedError') {
         showToast('Разрешите доступ к камере в браузере');
@@ -1877,7 +2002,55 @@
     });
   }
 
+  function startZoomedZXingLoop() {
+    if (window._zxingScanTimer || window._zxingBrowserReader) return;
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.UPC_A,
+      ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.ITF
+    ]);
+    const reader = new ZXing.MultiFormatReader();
+    reader.setHints(hints);
+    window._zxingDetectedCodes = new Map();
+    window._zxingOverlayTimer = setInterval(renderZXingOverlays, 500);
+    window._zxingScanTimer = setInterval(() => {
+      if (scanCooldown) return;
+      const video = document.getElementById('ke-cam-video');
+      if (!video || video.readyState < 2 || !video.videoWidth) return;
+      const crop = drawZoomCrop(video);
+      if (!crop) return;
+      let result = null;
+      try {
+        const ctx = crop.canvas.getContext('2d');
+        const imgData = ctx.getImageData(0, 0, crop.canvas.width, crop.canvas.height);
+        const lum = new ZXing.RGBLuminanceSource(imgData.data, crop.canvas.width, crop.canvas.height);
+        const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+        result = reader.decode(bmp);
+        reader.reset();
+      } catch (e) { result = null; }
+      if (result) {
+        const code = result.getText();
+        if (pendingScanCode) {
+          updateTrackingUI(code === pendingScanCode);
+        } else if (code) {
+          const pt = currentReport.sections[currentSectionIndex]?.photoTypes.find(t => t.id === selectedPhotoType);
+          if (pt?.isSN || isKECode(code)) {
+            const rawPts = result.getResultPoints() || [];
+            const pts = rawPts.map(p => ({ getX: () => p.getX() + crop.offX, getY: () => p.getY() + crop.offY }));
+            window._zxingDetectedCodes.set(code, { time: Date.now(), pts: pts });
+          }
+        }
+      } else if (pendingScanCode) {
+        updateTrackingUI(false);
+      }
+    }, 250);
+  }
+
   function initZXingScanner(video) {
+    if (isDigitalZoom()) { startZoomedZXingLoop(); return; }
+    if (window._zxingBrowserReader) { try { window._zxingBrowserReader.reset(); } catch (e) {} window._zxingBrowserReader = null; }
     const hints = new Map();
     hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
       ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
@@ -1907,6 +2080,8 @@
   }
 
   function initZXingScannerInterval(video) {
+    if (isDigitalZoom()) { startZoomedZXingLoop(); return; }
+    if (window._zxingBrowserReader) { try { window._zxingBrowserReader.reset(); } catch (e) {} window._zxingBrowserReader = null; }
     const hints = new Map();
     hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
       ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
@@ -2057,6 +2232,8 @@
 
   function closeKEModal() {
     torchOn = false;
+    resetScannerZoom();
+    zoomCanvas = null;
     const modal = document.getElementById('ke-camera-modal');
     const video = document.getElementById('ke-cam-video');
     const overlays = document.getElementById('ke-cam-overlays');
@@ -2081,8 +2258,11 @@
     keModalOpen = false;
   }
 
-  // Battery: stop camera + decoding when the app is backgrounded (screen lock / app switch)
   function suspendScanner() {
+    torchOn = false;
+    const torchBtn = document.getElementById('ke-cam-torch');
+    if (torchBtn) torchBtn.classList.remove('on');
+    zoomCanvas = null;
     if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
     if (window._zxingScanTimer) { clearInterval(window._zxingScanTimer); window._zxingScanTimer = null; }
     if (window._zxingOverlayTimer) { clearInterval(window._zxingOverlayTimer); window._zxingOverlayTimer = null; }
@@ -2114,9 +2294,16 @@
   function keCamCapture() {
     const video = document.getElementById('ke-cam-video');
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
+    const crop = getZoomCrop(video);
+    if (crop) {
+      canvas.width = crop.sw;
+      canvas.height = crop.sh;
+      canvas.getContext('2d').drawImage(video, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, crop.sw, crop.sh);
+    } else {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+    }
     
     const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
     
@@ -2189,6 +2376,189 @@
       const code = entered.trim();
       if (isSN || isKECode(code)) {
         addKECode(code, isSN);
+      } else {
+        showToast('Некорректный номер ' + label);
+      }
+    }
+  }
+
+  let keSnGalleryChain = Promise.resolve();
+  let pickItems = [];
+  let pickIsSN = false;
+  let pickCanvas = null;
+
+  async function detectBarcodesOnCanvas(canvas) {
+    const results = [];
+    if (!canvas || !canvas.width || !canvas.height) return results;
+    if ('BarcodeDetector' in window) {
+      try {
+        const det = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'pdf417'] });
+        const codes = await det.detect(canvas);
+        codes.forEach(c => {
+          if (c.rawValue && c.rawValue.trim()) {
+            const bb = c.boundingBox;
+            results.push({
+              code: c.rawValue.trim(),
+              box: bb && typeof bb.x === 'number' ? { x: bb.x, y: bb.y, width: bb.width, height: bb.height } : null
+            });
+          }
+        });
+      } catch (e) {}
+    }
+    if (results.length) return results;
+    if (typeof ZXing !== 'undefined') {
+      const seen = new Set();
+      const pushRes = (res, offX, offY) => {
+        if (!res || !res.getText()) return;
+        const text = res.getText().trim();
+        if (!text || seen.has(text)) return;
+        seen.add(text);
+        const pts = res.getResultPoints() || [];
+        let box = null;
+        if (pts.length) {
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          pts.forEach(p => {
+            const px = p.getX() + offX, py = p.getY() + offY;
+            if (px < minX) minX = px;
+            if (py < minY) minY = py;
+            if (px > maxX) maxX = px;
+            if (py > maxY) maxY = py;
+          });
+          const pad = 20;
+          box = { x: Math.max(0, minX - pad), y: Math.max(0, minY - pad), width: maxX - minX + pad * 2, height: maxY - minY + pad * 2 };
+        }
+        results.push({ code: text, box: box });
+      };
+      const decodeOnce = (cnv) => {
+        try {
+          const ctx = cnv.getContext('2d');
+          const imgData = ctx.getImageData(0, 0, cnv.width, cnv.height);
+          const lum = new ZXing.RGBLuminanceSource(imgData.data, cnv.width, cnv.height);
+          const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+          const hints = new Map();
+          hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+            ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+            ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+            ZXing.BarcodeFormat.QR_CODE, ZXing.BarcodeFormat.UPC_A,
+            ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.ITF
+          ]);
+          hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+          const reader = new ZXing.MultiFormatReader();
+          reader.setHints(hints);
+          return reader.decode(bmp);
+        } catch (e) { return null; }
+      };
+      pushRes(decodeOnce(canvas), 0, 0);
+      const w = canvas.width, h = canvas.height;
+      const tw = Math.round(w * 0.6), th = Math.round(h * 0.6);
+      if (tw > 40 && th > 40) {
+        const tile = document.createElement('canvas');
+        tile.width = tw; tile.height = th;
+        const tctx = tile.getContext('2d');
+        for (let ty = 0; ty < 2; ty++) {
+          for (let tx = 0; tx < 2; tx++) {
+            const ox = tx === 0 ? 0 : w - tw, oy = ty === 0 ? 0 : h - th;
+            tctx.drawImage(canvas, ox, oy, tw, th, 0, 0, tw, th);
+            pushRes(decodeOnce(tile), ox, oy);
+          }
+        }
+      }
+    }
+    return results;
+  }
+
+  function queueKESNDetection(canvas, isSN) {
+    keSnGalleryChain = keSnGalleryChain.then(() => handleKESNPhotoCodes(canvas, isSN)).catch(() => {});
+  }
+
+  async function handleKESNPhotoCodes(canvas, isSN) {
+    const found = await detectBarcodesOnCanvas(canvas);
+    const valid = found.filter(r => isSN || isKECode(r.code));
+    if (valid.length === 1) {
+      addKECode(valid[0].code, isSN);
+      showToast('ШК распознан: ' + valid[0].code);
+      return;
+    }
+    if (valid.length >= 2) {
+      openBarcodePickModal(canvas, valid, isSN);
+      return;
+    }
+    const label = isSN ? 'СН' : 'КЕ';
+    const entered = prompt('Номер ' + label + ' не распознан. Введите вручную (не обязательно):');
+    if (entered && entered.trim()) {
+      const code = entered.trim();
+      if (isSN || isKECode(code)) {
+        addKECode(code, isSN);
+      } else {
+        showToast('Некорректный номер ' + label);
+      }
+    }
+  }
+
+  function openBarcodePickModal(canvas, items, isSN) {
+    pickCanvas = canvas;
+    pickItems = items;
+    pickIsSN = isSN;
+    const modal = document.getElementById('barcode-pick-modal');
+    const img = document.getElementById('barcode-pick-image');
+    const wrap = document.getElementById('barcode-pick-image-wrap');
+    const boxes = document.getElementById('barcode-pick-boxes');
+    const status = document.getElementById('barcode-pick-status');
+    if (!modal || !img) return;
+    if (boxes) boxes.innerHTML = '';
+    img.onload = () => {
+      const dispW = img.clientWidth || (wrap ? wrap.clientWidth : 0);
+      const dispH = img.clientHeight || (wrap ? wrap.clientHeight : 0);
+      if (!dispW || !dispH || !boxes) return;
+      const scaleX = dispW / canvas.width;
+      const scaleY = dispH / canvas.height;
+      let html = '';
+      items.forEach((it, i) => {
+        const b = it.box || { x: canvas.width * 0.2, y: canvas.height * 0.4, width: canvas.width * 0.6, height: canvas.height * 0.2 };
+        const left = Math.max(0, b.x * scaleX);
+        const top = Math.max(0, b.y * scaleY);
+        const w = Math.min(dispW - left, Math.max(60, b.width * scaleX));
+        const h = Math.min(dispH - top, Math.max(40, b.height * scaleY));
+        html += `<div class="ke-cam-overlay-box" data-code="${escapeHtml(it.code)}" style="left:${left}px;top:${top}px;width:${w}px;height:${h}px"><span class="ke-cam-overlay-label">${i + 1}: ${escapeHtml(it.code)}</span></div>`;
+      });
+      boxes.innerHTML = html;
+      boxes.querySelectorAll('.ke-cam-overlay-box').forEach(el => {
+        el.addEventListener('click', () => chooseBarcodePick(el.dataset.code));
+      });
+    };
+    img.src = canvas.toDataURL('image/jpeg', 0.9);
+    if (status) status.textContent = 'Найдено ШК: ' + items.length + ' — нажмите на нужный';
+    modal.classList.remove('hidden');
+  }
+
+  function chooseBarcodePick(code) {
+    if (!code || !code.trim()) return;
+    closeBarcodePickModal();
+    addKECode(code.trim(), pickIsSN);
+    showToast('ШК добавлен: ' + code.trim());
+  }
+
+  function closeBarcodePickModal() {
+    const modal = document.getElementById('barcode-pick-modal');
+    if (modal) modal.classList.add('hidden');
+    const boxes = document.getElementById('barcode-pick-boxes');
+    if (boxes) boxes.innerHTML = '';
+    const img = document.getElementById('barcode-pick-image');
+    if (img) img.src = '';
+    pickItems = [];
+    pickCanvas = null;
+  }
+
+  function barcodePickManual() {
+    const isSN = pickIsSN;
+    closeBarcodePickModal();
+    const label = isSN ? 'СН' : 'КЕ';
+    const entered = prompt('Введите номер ' + label + ' вручную:');
+    if (entered && entered.trim()) {
+      const code = entered.trim();
+      if (isSN || isKECode(code)) {
+        addKECode(code, isSN);
+        showToast('ШК добавлен: ' + code);
       } else {
         showToast('Некорректный номер ' + label);
       }

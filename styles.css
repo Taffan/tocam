@@ -1919,6 +1919,103 @@ body {
   height: 22px;
 }
 
+.ke-cam-zoom {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 20;
+  min-width: 52px;
+  height: 40px;
+  border: 2px solid rgba(255,255,255,0.5);
+  border-radius: 20px;
+  background: rgba(0,0,0,0.4);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.ke-cam-zoom:active {
+  background: rgba(255,255,255,0.3);
+}
+
+.ke-cam-zoom.on {
+  border-color: #FFD700;
+  color: #FFD700;
+}
+
+.ke-cam-torch.hidden,
+.ke-cam-zoom.hidden {
+  display: none;
+}
+
+/* Barcode Pick Modal (выбор ШК на фото из галереи) */
+.barcode-pick-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
+  overflow-y: auto;
+}
+
+.barcode-pick-header {
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+  padding: 16px 16px 8px;
+}
+
+.barcode-pick-body {
+  text-align: center;
+  padding: 8px 16px;
+}
+
+.barcode-pick-image-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.barcode-pick-image-wrap img {
+  display: block;
+  max-width: 100%;
+  max-height: 55vh;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+}
+
+.barcode-pick-boxes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.barcode-pick-status {
+  text-align: center;
+  font-size: 14px;
+  padding: 10px 16px 4px;
+  color: #666;
+}
+
+.barcode-pick-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+}
+
+.dark .barcode-pick-status {
+  color: #aaa;
+}
+
 .ke-cam-actions {
   display: flex;
   gap: 12px;
