@@ -1,4 +1,4 @@
-const CACHE_NAME = 'foto-reports-v25';
+const CACHE_NAME = 'foto-reports-v26';
 
 const PRECACHE = [
   './',
@@ -7,7 +7,6 @@ const PRECACHE = [
   './app.js',
   './data.js',
   './manifest.json',
-  './version.json',
   './lib/jszip.min.js',
   './lib/zxing.min.js',
   './lib/xlsx.min.js'
@@ -44,7 +43,7 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
   if (url.pathname.includes('version.json')) {
-    event.respondWith(fetch(event.request).catch(() => caches.match(event.request, { ignoreSearch: true })));
+    event.respondWith(fetch(event.request));
     return;
   }
 

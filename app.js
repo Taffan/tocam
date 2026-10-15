@@ -27,37 +27,60 @@
   const verEl = document.getElementById('settings-version-number');
   if (verEl) verEl.textContent = APP_VERSION;
 
-  fetch('version.json?t=' + Date.now(), { cache: 'no-cache' })
-    .then(r => r.json())
+  function fetchVersion(timeoutMs) {
+    const opts = { cache: 'no-cache' };
+    let timer = null;
+    if (typeof AbortController !== 'undefined') {
+      const ctrl = new AbortController();
+      opts.signal = ctrl.signal;
+      timer = setTimeout(() => ctrl.abort(), timeoutMs || 8000);
+    }
+    const t = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+    return fetch('version.json?t=' + t, opts)
+      .then(r => r.json())
+      .finally(() => { if (timer) clearTimeout(timer); });
+  }
+
+  fetchVersion(8000)
     .then(data => {
       const remoteVer = String(data.version || APP_VERSION);
-      if (remoteVer !== APP_VERSION) {
-        if (localStorage.getItem('_updating') === '1') {
-          APP_VERSION = remoteVer;
-          localStorage.setItem('appVersion', APP_VERSION);
-          localStorage.removeItem('_updating');
-          return;
-        }
-        localStorage.setItem('_updating', '1');
-        const tasks = [];
-        if ('caches' in window) {
-          tasks.push(caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))));
-        }
-        if ('serviceWorker' in navigator) {
-          tasks.push(navigator.serviceWorker.getRegistrations().then(regs => {
-            regs.forEach(reg => reg.unregister());
-          }));
-        }
-        Promise.all(tasks).finally(() => {
-          localStorage.setItem('appVersion', remoteVer);
-          localStorage.removeItem('_updating');
-          location.reload();
-        });
+      if (remoteVer === APP_VERSION) {
+        localStorage.removeItem('_updating');
+        const verEl2 = document.getElementById('settings-version-number');
+        if (verEl2) verEl2.textContent = APP_VERSION;
         return;
       }
-      localStorage.removeItem('_updating');
-      const verEl2 = document.getElementById('settings-version-number');
-      if (verEl2) verEl2.textContent = APP_VERSION;
+      if (localStorage.getItem('_updating') === '1') {
+        APP_VERSION = remoteVer;
+        localStorage.setItem('appVersion', APP_VERSION);
+        localStorage.removeItem('_updating');
+        return;
+      }
+      // двойная проверка сети перед разрушающими действиями (кэши/SW)
+      fetchVersion(8000)
+        .then(data2 => {
+          if (String(data2.version) !== remoteVer) return;
+          localStorage.setItem('_updating', '1');
+          const tasks = [];
+          if ('caches' in window) {
+            tasks.push(caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))));
+          }
+          if ('serviceWorker' in navigator) {
+            tasks.push(navigator.serviceWorker.getRegistrations().then(regs => {
+              regs.forEach(reg => reg.unregister());
+            }));
+          }
+          Promise.all(tasks).finally(() => {
+            localStorage.setItem('appVersion', remoteVer);
+            localStorage.removeItem('_updating');
+            location.reload();
+          });
+        })
+        .catch(() => {
+          localStorage.removeItem('_updating');
+          const verEl3 = document.getElementById('settings-version-number');
+          if (verEl3) verEl3.textContent = APP_VERSION;
+        });
     })
     .catch(() => {});
 
@@ -271,9 +294,7 @@
         navigator.serviceWorker.register('./sw.js', { scope: './' }).then(doSWCheck).catch(() => {});
       }).catch(() => {});
     }
-    const t = Date.now();
-    fetch('version.json?t=' + t, { cache: 'no-cache' })
-      .then(r => r.json())
+    fetchVersion(8000)
       .then(data => {
         const remoteVer = String(data.version);
         const localVer = localStorage.getItem('appVersion');
@@ -292,8 +313,7 @@
   function performUpdate() {
     document.getElementById('menu-dropdown').classList.add('hidden');
     showToast('Проверка обновления...');
-    fetch('version.json?t=' + Date.now(), { cache: 'no-cache' })
-      .then(r => r.json())
+    fetchVersion(8000)
       .then(data => {
         const ver = String(data.version || Date.now());
         localStorage.setItem('appVersion', ver);
